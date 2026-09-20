@@ -10,7 +10,7 @@ export async function showcaseApi(path, method, body) {
  if(path==='/showcase/role'){role=body.role;return {};}
  if(method!=='GET')throw Error('这是只读界面预览，请使用顶部按钮切换三端；不创建真实账户、订单或付款。');
  if(path==='/session')return {user:{id:'preview-'+role,name:'预览'+({guest:'游客',guide:'地陪',admin:'管理员'}[role]),role},settings,manualPayments:false};
- if(path.startsWith('/guides?')) {const q=new URLSearchParams(path.split('?')[1]);return guides.filter(g=>g.city===q.get('city')&&(q.get('purposes')||'').split(',').every(p=>g.purposes.includes(p))&&Number(q.get('adults'))+Number(q.get('children'))<=g.capacity&&(!q.get('budget')||g.rate*Number(q.get('hours'))<=Number(q.get('budget')))&&(!q.get('chinese')||q.get('chinese')===g.chineseLevel)&&(!q.get('style')||q.get('style')===g.style));}
+ if(path.startsWith('/guides?')) {const q=new URLSearchParams(path.split('?')[1]);return guides.filter(g=>g.city===q.get('city')&&(q.get('purposes')||'').split(',').every(p=>g.purposes.includes(p))&&Number(q.get('adults'))+Number(q.get('children'))<=g.capacity&&(!q.get('budget')||g.rate*Number(q.get('hours'))<=Number(q.get('budget')))&&(!q.get('chinese')||q.get('chinese')===g.chineseLevel)&&(!q.get('style')||q.get('style')===g.style)).map(g=>({...g,total:g.rate*Number(q.get('hours'))}));}
  if(path.startsWith('/guides/'))return guides.find(g=>g.id===path.split('/')[2]);
  if(path==='/guide/profile')return guides[0];
  if(path==='/guide/availability')return [1,2,3,4,5].map(n=>({id:'slot-'+n,weekday:n,start:540,end:1080,blocked:false}));
