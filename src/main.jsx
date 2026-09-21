@@ -31,6 +31,7 @@ import {
   Trash2,
 } from "lucide-react";
 import "./platform.css";
+import ChatCenter from "./chat.jsx";
 const purposes = {
   tourism: ["旅游", "관광"],
   business: ["商业", "비즈니스"],
@@ -108,8 +109,14 @@ const hm = (n) =>
 const mins = (s) =>
   s.split(":").reduce((a, v, i) => a + Number(v) * (i ? 1 : 60), 0);
 let csrf = "";
+let previewConnection = false;
 async function api(path, method = "GET", body) {
-  if (import.meta.env.MODE === "showcase") return (await import("./showcase.js")).showcaseApi(path, method, body);
+  if (
+    import.meta.env.MODE === "showcase" &&
+    previewConnection &&
+    path !== "/session"
+  )
+    return (await import("./showcase.js")).showcaseApi(path, method, body);
   const r = await fetch("/api" + path, {
     method,
     credentials: "same-origin",
@@ -122,7 +129,16 @@ async function api(path, method = "GET", body) {
   } catch {
     throw Error("服务连接失败，请稍后重试");
   }
+  if (
+    import.meta.env.MODE === "showcase" &&
+    path === "/session" &&
+    data.code === "BACKEND_NOT_CONFIGURED"
+  ) {
+    previewConnection = true;
+    return (await import("./showcase.js")).showcaseApi(path, method, body);
+  }
   if (!r.ok) throw Error(data.error || "请求失败");
+  if (path === "/session") previewConnection = false;
   return data;
 }
 function useLoad(path, revision = 0) {
@@ -226,7 +242,8 @@ function App() {
     [toast, setToast] = useState(""),
     [mobile, setMobile] = useState(false),
     [notice, setNotice] = useState(false),
-    [notifications, setNotifications] = useState([]);
+    [notifications, setNotifications] = useState([]),
+    [chatUnread, setChatUnread] = useState(0);
   const [search, setSearch] = useState(() => {
     const p = new URLSearchParams(location.search);
     return {
@@ -284,13 +301,21 @@ function App() {
   useEffect(() => {
     if (!session?.user) {
       setNotifications([]);
+      setChatUnread(0);
       return;
     }
     let stopped = false;
-    const load = () =>
-      api("/notifications")
+    const load = () => {
+      api("/conversations")
+        .then(
+          (rows) =>
+            !stopped && setChatUnread(rows.reduce((n, c) => n + c.unread, 0)),
+        )
+        .catch(() => {});
+      return api("/notifications")
         .then((v) => !stopped && setNotifications(v))
         .catch(() => {});
+    };
     load();
     const timer = setInterval(load, 20000);
     return () => {
@@ -299,6 +324,7 @@ function App() {
     };
   }, [session?.user?.id, revision]);
   const user = session?.user,
+    adminZone = route.startsWith("/admin"),
     staff =
       user && ["admin", "support", "finance", "reviewer"].includes(user.role);
   const ctx = {
@@ -313,102 +339,147 @@ function App() {
     refresh,
     message,
     reloadSession,
+    logout,
   };
   async function logout() {
     try {
       await api("/logout", "POST", {});
       csrf = "";
       await reloadSession();
-      navigate("/");
+      navigate(adminZone ? "/admin/login" : "/");
     } catch (e) {
       message(e.message);
     }
   }
   return (
     <>
-      {import.meta.env.MODE === "showcase" && <div className="showcase-bar"><strong>界面预览 · 示例资料，不接受真实预约或付款</strong><div>{[["guest","游客端","/"],["guide","地陪端","/guide"],["admin","管理后台","/admin"]].map(([role,label,path]) => <button key={role} onClick={async()=>{await api("/showcase/role","POST",{role});await reloadSession();navigate(path);refresh();}}>{label}</button>)}</div></div>}
-      <header className="header">
-        <div className="nav-wrap">
-          <button className="brand" onClick={() => navigate("/")}>
-            Korea<span>Mate</span>
-            <span className="brand-dot">✦</span>
+      {session?.preview && (
+        <div className="showcase-bar">
+          <strong>
+            界面预览 · 示例地陪资料 · 正式注册、预约和收款尚未开放
+          </strong>
+        </div>
+      )}
+      {adminZone ? (
+        <header className="admin-header">
+          <button className="brand" onClick={() => navigate("/admin")}>
+            Korea<span>Mate</span> <small>运营管理</small>
           </button>
-          <nav className={mobile ? "nav open" : "nav"}>
-            <button
-              className={route === "/" ? "active" : ""}
-              onClick={() => navigate("/")}
-            >
-              {t("寻找地陪", "메이트 찾기")}
-            </button>
-            {user && (
-              <button onClick={() => navigate("/orders")}>
-                {t("我的订单", "내 예약")}
-              </button>
-            )}
-            {user?.role === "guide" && (
-              <button onClick={() => navigate("/guide")}>
-                {t("地陪工作台", "메이트 관리")}
-              </button>
-            )}
+          <div>
             {staff && (
-              <button onClick={() => navigate("/admin")}>
-                {t("管理后台", "관리자")}
-              </button>
-            )}
-            {!user && (
-              <button onClick={() => navigate("/join")}>
-                {t("成为地陪", "메이트 지원")}
-              </button>
-            )}
-          </nav>
-          <div className="nav-right">
-            <button
-              className="language"
-              onClick={() => setLang(lang === "zh" ? "ko" : "zh")}
-            >
-              <Globe2 size={16} />
-              {lang === "zh" ? "한국어" : "中文"}
-            </button>
-            {user ? (
               <>
-                <button
-                  className="icon-btn"
-                  aria-label="通知"
-                  onClick={() => {
-                    setNotice(!notice);
-                    api("/notifications", "POST", {})
-                      .then(refresh)
-                      .catch(() => {});
-                  }}
-                >
-                  <Bell size={19} />
-                  {notifications.some((n) => !n.is_read) && <i />}
-                </button>
-                <button
-                  className="user-name"
-                  onClick={() => navigate("/orders")}
-                >
-                  {user.name}
-                </button>
-                <button className="icon-btn" aria-label="退出" onClick={logout}>
-                  <LogOut size={17} />
+                <span>{user.name}</span>
+                <button className="text-button" onClick={logout}>
+                  退出管理账户
                 </button>
               </>
-            ) : (
-              <Button onClick={() => navigate("/login")}>
-                {t("登录 / 注册", "로그인 / 가입")}
-              </Button>
             )}
-            <button
-              className="hamburger icon-btn"
-              aria-label="菜单"
-              onClick={() => setMobile(!mobile)}
-            >
-              {mobile ? <X /> : <Menu />}
+            <button className="text-button" onClick={() => navigate("/")}>
+              访问网站首页
             </button>
           </div>
-        </div>
-      </header>
+        </header>
+      ) : (
+        <header className="header">
+          <div className="nav-wrap">
+            <button className="brand" onClick={() => navigate("/")}>
+              Korea<span>Mate</span>
+              <span className="brand-dot">✦</span>
+            </button>
+            <nav className={mobile ? "nav open" : "nav"}>
+              <button
+                className={route === "/" ? "active" : ""}
+                onClick={() => navigate("/")}
+              >
+                {t("寻找地陪", "메이트 찾기")}
+              </button>
+              {user && (
+                <button onClick={() => navigate("/orders")}>
+                  {t("我的订单", "내 예약")}
+                </button>
+              )}
+              {user && ["guest", "guide"].includes(user.role) && (
+                <button onClick={() => navigate("/messages")}>
+                  消息{" "}
+                  {chatUnread > 0 && (
+                    <span className="unread-pill">
+                      {chatUnread > 99 ? "99+" : chatUnread}
+                    </span>
+                  )}
+                </button>
+              )}
+              {user?.role === "guide" && (
+                <button onClick={() => navigate("/guide")}>
+                  {t("地陪工作台", "메이트 관리")}
+                </button>
+              )}
+              {!user && (
+                <button onClick={() => navigate("/join")}>
+                  {t("成为地陪", "메이트 지원")}
+                </button>
+              )}
+            </nav>
+            <div className="nav-right">
+              {!user && (
+                <button
+                  className="text-button"
+                  onClick={() => navigate("/guide/login")}
+                >
+                  {t("地陪登录", "메이트 로그인")}
+                </button>
+              )}
+              <button
+                className="language"
+                onClick={() => setLang(lang === "zh" ? "ko" : "zh")}
+              >
+                <Globe2 size={16} />
+                {lang === "zh" ? "한국어" : "中文"}
+              </button>
+              {user ? (
+                <>
+                  <button
+                    className="icon-btn"
+                    aria-label="通知"
+                    onClick={() => {
+                      setNotice(!notice);
+                      api("/notifications", "POST", {})
+                        .then(refresh)
+                        .catch(() => {});
+                    }}
+                  >
+                    <Bell size={19} />
+                    {notifications.some((n) => !n.is_read) && <i />}
+                  </button>
+                  <button
+                    className="user-name"
+                    onClick={() => navigate("/orders")}
+                  >
+                    {user.name}
+                  </button>
+                  <button
+                    className="icon-btn"
+                    aria-label="退出"
+                    onClick={logout}
+                  >
+                    <LogOut size={17} />
+                  </button>
+                </>
+              ) : (
+                <Button onClick={() => navigate("/login")}>
+                  {t("登录 / 注册", "로그인 / 가입")}
+                </Button>
+              )}
+              <button
+                className="hamburger icon-btn"
+                aria-label="菜单"
+                onClick={() => setMobile(!mobile)}
+              >
+                {mobile ? <X /> : <Menu />}
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
       {notice && (
         <aside className="notifications">
           <div className="row">
@@ -451,12 +522,41 @@ function App() {
         <main>
           {route === "/" ? (
             <Home {...ctx} />
-          ) : route === "/login" || route === "/join" ? (
-            <Auth {...ctx} joining={route === "/join"} />
+          ) : adminZone ? (
+            staff ? (
+              <Admin {...ctx} />
+            ) : (
+              <Auth {...ctx} portal="admin" returnTo="/admin" />
+            )
+          ) : ["/login", "/join", "/guide/login"].includes(route) ? (
+            <Auth
+              key={route}
+              {...ctx}
+              portal={
+                route === "/guide/login" || route === "/join"
+                  ? "guide"
+                  : "guest"
+              }
+              joining={route === "/join"}
+              returnTo={new URLSearchParams(location.search).get("next")}
+            />
           ) : route.startsWith("/guides/") ? (
             <GuideDetail {...ctx} id={route.split("/")[2]} />
           ) : !user ? (
-            <Auth {...ctx} />
+            <Auth
+              {...ctx}
+              portal={route.startsWith("/guide") ? "guide" : "guest"}
+              returnTo={route + location.search}
+            />
+          ) : route === "/payments/success" || route === "/payments/fail" ? (
+            <PaymentReturn {...ctx} failed={route === "/payments/fail"} />
+          ) : route === "/messages" || route.startsWith("/messages/") ? (
+            <ChatCenter
+              key={route}
+              {...ctx}
+              api={api}
+              id={route.split("/")[2] || null}
+            />
           ) : route === "/orders" ? (
             <Orders {...ctx} />
           ) : route.startsWith("/orders/") ? (
@@ -741,7 +841,9 @@ function Home(ctx) {
               </h2>
               <p>
                 {t(
-                  import.meta.env.MODE === "showcase" ? "以下为筛选效果演示；日期和时段不代表真实可预约档期。" : "已核对完整时段、接待人数和所选出行目的。",
+                  session.preview
+                    ? "以下为筛选效果演示；日期和时段不代表真实可预约档期。"
+                    : "已核对完整时段、接待人数和所选出行目的。",
                   "시간, 인원, 선택 목적을 모두 확인했습니다.",
                 )}
               </p>
@@ -921,7 +1023,31 @@ function Home(ctx) {
     </>
   );
 }
-function Auth({ t, navigate, reloadSession, message, joining = false, user }) {
+function Auth({
+  t,
+  navigate,
+  reloadSession,
+  message,
+  joining = false,
+  user,
+  logout,
+  portal = "guest",
+  returnTo,
+}) {
+  const adminPortal = portal === "admin";
+  const landing = (role) =>
+    ["admin", "support", "finance", "reviewer"].includes(role)
+      ? "/admin"
+      : role === "guide"
+        ? "/guide"
+        : "/orders";
+  const safeNext = (role) =>
+    typeof returnTo === "string" &&
+    (/^\/(orders|messages)(?:\/|$|\?)/.test(returnTo) ||
+      /^\/guides\//.test(returnTo) ||
+      /^\/payments\/(success|fail)(?:\?|$)/.test(returnTo))
+      ? returnTo
+      : landing(role);
   const [register, setRegister] = useState(joining),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -929,11 +1055,13 @@ function Auth({ t, navigate, reloadSession, message, joining = false, user }) {
   if (user)
     return (
       <div className="page empty">
-        {t("你已经登录", "이미 로그인했습니다")}
-        <Button
-          onClick={() => navigate(user.role === "guide" ? "/guide" : "/orders")}
-        >
-          进入工作区
+        {adminPortal &&
+        !["admin", "support", "finance", "reviewer"].includes(user.role)
+          ? "此账户没有管理权限，请退出后使用管理账户登录。"
+          : t("你已经登录", "이미 로그인했습니다")}
+        <Button onClick={() => navigate(landing(user.role))}>进入工作区</Button>
+        <Button secondary onClick={logout}>
+          退出当前账户
         </Button>
       </div>
     );
@@ -943,10 +1071,21 @@ function Auth({ t, navigate, reloadSession, message, joining = false, user }) {
     setError("");
     const data = Object.fromEntries(new FormData(e.currentTarget));
     try {
-      await api(register ? "/register" : "/login", "POST", data);
+      data.role = portal === "guide" ? "guide" : "guest";
+      const result = await api(
+        register && !adminPortal
+          ? "/register"
+          : adminPortal
+            ? "/admin/login"
+            : portal === "guide"
+              ? "/guide/login"
+              : "/login",
+        "POST",
+        data,
+      );
       await reloadSession();
       message(t("欢迎来到 KoreaMate", "KoreaMate에 오신 것을 환영합니다"));
-      navigate(data.role === "guide" ? "/guide" : "/orders");
+      navigate(safeNext(result.user.role));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -967,15 +1106,27 @@ function Auth({ t, navigate, reloadSession, message, joining = false, user }) {
         </div>
       </div>
       <div className="auth-panel">
-        <span className="eyebrow">WELCOME TO KOREAMATE</span>
+        <span className="eyebrow">
+          {adminPortal ? "KOREAMATE OPERATIONS" : "WELCOME TO KOREAMATE"}
+        </span>
         <h2>
-          {register
-            ? t("创建你的账户", "계정 만들기")
-            : t("很高兴再次见到你", "다시 만나 반가워요")}
+          {adminPortal
+            ? "管理账户登录"
+            : register
+              ? t(
+                  portal === "guide" ? "申请成为地陪" : "创建游客账户",
+                  "계정 만들기",
+                )
+              : t(
+                  portal === "guide" ? "地陪登录" : "游客登录",
+                  "다시 만나 반가워요",
+                )}
         </h2>
         <p>
           {t(
-            "游客、地陪和平台各自拥有独立账户。",
+            adminPortal
+              ? "仅限平台授权人员。管理账户由平台创建，不开放公众注册。"
+              : "登录后管理你的预约、行程和消息。",
             "여행자와 메이트는 개별 계정으로 이용합니다.",
           )}
         </p>
@@ -989,12 +1140,6 @@ function Auth({ t, navigate, reloadSession, message, joining = false, user }) {
                   maxLength="60"
                   autoComplete="name"
                 />
-              </Field>
-              <Field label={t("账户类型", "계정 유형")}>
-                <select name="role" defaultValue={joining ? "guide" : "guest"}>
-                  <option value="guest">{t("游客", "여행자")}</option>
-                  <option value="guide">{t("地陪", "메이트")}</option>
-                </select>
               </Field>
             </>
           )}
@@ -1021,17 +1166,19 @@ function Auth({ t, navigate, reloadSession, message, joining = false, user }) {
             <ArrowRight size={17} />
           </Button>
         </form>
-        <button
-          className="text-button"
-          onClick={() => {
-            setRegister(!register);
-            setError("");
-          }}
-        >
-          {register
-            ? t("已有账户？登录", "이미 계정이 있나요? 로그인")
-            : t("没有账户？注册", "계정 만들기")}
-        </button>
+        {!adminPortal && (
+          <button
+            className="text-button"
+            onClick={() => {
+              setRegister(!register);
+              setError("");
+            }}
+          >
+            {register
+              ? t("已有账户？登录", "이미 계정이 있나요? 로그인")
+              : t("没有账户？注册", "계정 만들기")}
+          </button>
+        )}
       </div>
     </section>
   );
@@ -1044,7 +1191,10 @@ function GuideDetail(ctx) {
     [failure, setFailure] = useState("");
   async function book() {
     if (!user) {
-      navigate("/login");
+      navigate(
+        "/login?next=" +
+          encodeURIComponent(location.pathname + location.search),
+      );
       return;
     }
     setBusy(true);
@@ -1267,12 +1417,18 @@ function OrderDetail(ctx) {
   const [busy, setBusy] = useState(false),
     [failure, setFailure] = useState(""),
     [text, setText] = useState(""),
-    [caseOpen, setCaseOpen] = useState(false);
+    [caseOpen, setCaseOpen] = useState(false),
+    [refundKey, setRefundKey] = useState(() => crypto.randomUUID());
   async function act(action, data = {}) {
     setBusy(true);
     setFailure("");
     try {
-      await api(`/bookings/${id}/${action}`, "POST", data);
+      const result = await api(`/bookings/${id}/${action}`, "POST", data);
+      if (action === "checkout") {
+        window.location.assign(result.url);
+        return true;
+      }
+      if (action === "refund-online") setRefundKey(crypto.randomUUID());
       refresh();
       message(t("操作已保存", "저장했습니다"));
       return true;
@@ -1420,10 +1576,39 @@ function OrderDetail(ctx) {
             {isGuest && b.status === "awaiting_payment" && (
               <div className="section-block">
                 <h3>付款安排</h3>
-                {!session.manualPayments ||
-                !session.settings.paymentInstructions ? (
+                {session.payments?.enabled ? (
+                  <div className="panel">
+                    <p>
+                      {session.payments.mode === "test"
+                        ? "支付测试环境：不会真实扣款。"
+                        : "前往支付机构的安全收银台付款。"}
+                    </p>
+                    <p>应付 {money(b.total)} · 金额以订单为准</p>
+                    {["confirming", "unknown"].includes(
+                      b.onlinePayment?.state,
+                    ) ? (
+                      <p className="notice">
+                        付款结果正在核对，档期暂时保留，请勿重复付款。
+                      </p>
+                    ) : (
+                      <Button disabled={busy} onClick={() => act("checkout")}>
+                        前往收银台付款
+                      </Button>
+                    )}
+                    {b.onlinePayment && (
+                      <Button
+                        secondary
+                        disabled={busy}
+                        onClick={() => act("payment-sync")}
+                      >
+                        刷新支付结果
+                      </Button>
+                    )}
+                  </div>
+                ) : !session.manualPayments ||
+                  !session.settings.paymentInstructions ? (
                   <div className="notice">
-                    在线支付尚未接入，人工收款尚未开放。请联系平台确认后续安排，请勿自行转账。预约到期会释放档期。
+                    在线收款尚未开通，人工收款尚未开放。请联系平台确认后续安排，请勿自行转账。预约到期会释放档期。
                   </div>
                 ) : (
                   <>
@@ -1562,48 +1747,34 @@ function OrderDetail(ctx) {
           </div>
           <div className="panel messages">
             <h3>
-              <MessageCircle size={19} /> 订单沟通
+              <MessageCircle size={19} /> 预约专属会话
             </h3>
-            <div className="message-list">
-              {b.messages.length ? (
-                b.messages.map((m) => (
-                  <div
-                    className={
-                      "message " + (m.user_id === user.id ? "mine" : "")
-                    }
-                    key={m.id}
-                  >
-                    <small>
-                      {m.name} · {kst(m.created)}
-                    </small>
-                    <p>{m.body}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="muted">
-                  在这里确认路线、集合地点和服务范围，双方都能查看记录。
+            {b.conversationId && (isGuest || isGuide) ? (
+              <>
+                <p>
+                  此窗口仅对应本次预约。集合地点、行程与服务要求都可以在会话中确认。
                 </p>
-              )}
-            </div>
-            {user.role !== "finance" && (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (await act("messages", { body: text })) setText("");
-                }}
-              >
-                <textarea
-                  aria-label="消息内容"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  required
-                  maxLength="2000"
-                  placeholder="输入消息…"
-                />
-                <Button disabled={busy}>发送</Button>
-              </form>
+                <Button
+                  onClick={() => navigate("/messages/" + b.conversationId)}
+                >
+                  打开与{isGuest ? b.guideName : b.guestName}的聊天
+                </Button>
+              </>
+            ) : (
+              <p className="muted">
+                {isGuest || isGuide
+                  ? "地陪确认接单后，系统会自动为双方开启独立会话。"
+                  : "聊天不向财务或其他账户开放。客服处理售后时须记录调阅原因。"}
+              </p>
             )}
           </div>
+          {operator &&
+            b.conversationId &&
+            !isGuest &&
+            !isGuide &&
+            b.cases.some((c) => c.status === "open") && (
+              <ChatAudit conversationId={b.conversationId} />
+            )}
           {!!b.cases.length && (
             <div className="panel">
               <h3>售后记录</h3>
@@ -1658,22 +1829,88 @@ function OrderDetail(ctx) {
             <div className="panel">
               <h3>财务操作</h3>
               <p className="small muted">
-                以下操作仅登记已实际完成的收付款，不会自动扣款、退款或向地陪打款。
+                在线支付订单可通过支付机构原路退款；人工收付款与地陪结算仍需登记实际流水。
               </p>
-              {b.status === "awaiting_payment" && session.manualPayments && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    act("confirm-payment", formData(e));
-                  }}
-                >
-                  <Field label="实际收款参考号">
-                    <input name="reference" required />
-                  </Field>
-                  <Button disabled={busy}>核实到账并确认预约</Button>
-                </form>
+              {b.onlinePayment && (
+                <div className="section-block">
+                  <p>
+                    支付渠道：Toss Payments ·{" "}
+                    {b.onlinePayment.mode === "test" ? "测试" : "正式"}
+                  </p>
+                  <Button
+                    secondary
+                    disabled={busy}
+                    onClick={() => act("payment-sync")}
+                  >
+                    向支付渠道核对状态
+                  </Button>
+                  {b.onlinePayment.refundPending && (
+                    <p className="notice">
+                      退款正在核对，请勿重复发起。结算已暂停。
+                    </p>
+                  )}
+                  {["paid", "partially_refunded"].includes(b.payment_status) &&
+                    b.settlement_status !== "paid" && (
+                      <details className="action-detail">
+                        <summary>发起原路退款</summary>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const d = formData(e);
+                            act("refund-online", {
+                              ...d,
+                              requestKey: refundKey,
+                              cancel: d.cancel === "on",
+                            });
+                          }}
+                        >
+                          <Field label="原路退款金额（韩元）">
+                            <input
+                              name="amount"
+                              type="number"
+                              min="1"
+                              max={b.total - b.refund}
+                              required
+                            />
+                          </Field>
+                          <Field label="退款原因">
+                            <textarea name="reason" required maxLength="200" />
+                          </Field>
+                          <label className="check-line">
+                            <input type="checkbox" name="cancel" />
+                            同时取消服务预约
+                          </label>
+                          <p className="small">
+                            提交后会向支付机构发起实际退款，请核对金额。
+                          </p>
+                          <Button
+                            danger
+                            disabled={busy || b.onlinePayment.refundPending}
+                          >
+                            确认发起退款
+                          </Button>
+                        </form>
+                      </details>
+                    )}
+                </div>
               )}
-              {["paid", "partially_refunded"].includes(b.payment_status) &&
+              {b.status === "awaiting_payment" &&
+                session.manualPayments &&
+                !b.onlinePayment && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      act("confirm-payment", formData(e));
+                    }}
+                  >
+                    <Field label="实际收款参考号">
+                      <input name="reference" required />
+                    </Field>
+                    <Button disabled={busy}>核实到账并确认预约</Button>
+                  </form>
+                )}
+              {!b.onlinePayment &&
+                ["paid", "partially_refunded"].includes(b.payment_status) &&
                 b.settlement_status !== "paid" && (
                   <details className="action-detail">
                     <summary>登记实际退款</summary>
@@ -1779,6 +2016,111 @@ function OrderDetail(ctx) {
             </div>
           )}
         </aside>
+      </div>
+    </section>
+  );
+}
+function ChatAudit({ conversationId }) {
+  const [reason, setReason] = useState(""),
+    [data, setData] = useState(null),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  return (
+    <details className="panel">
+      <summary>售后沟通记录调阅</summary>
+      <p>仅用于处理本订单待处理售后。调阅原因及操作人会写入审计日志。</p>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError("");
+          try {
+            setData(
+              await api(
+                `/admin/conversations/${conversationId}/audit`,
+                "POST",
+                { reason },
+              ),
+            );
+          } catch (e) {
+            setError(e.message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <Field label="调阅原因">
+          <textarea
+            required
+            minLength="5"
+            maxLength="500"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </Field>
+        <Button disabled={busy}>记录原因并调阅</Button>
+      </form>
+      {error && <p className="notice error">{error}</p>}
+      {data && (
+        <div className="message-list">
+          <p className="small muted">
+            最多显示最近 {data.limit} 条记录，仅供查看。
+          </p>
+          {data.messages.map((m) => (
+            <div className="message" key={m.id}>
+              <small>
+                {m.senderName} · {kst(m.created)}
+              </small>
+              <p>{m.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </details>
+  );
+}
+function PaymentReturn({ navigate, failed, refresh }) {
+  const [state, setState] = useState({ busy: false, error: "", result: null });
+  const params = new URLSearchParams(location.search);
+  async function confirm() {
+    setState({ busy: true, error: "", result: null });
+    try {
+      const result = await api("/payments/toss/confirm", "POST", {
+        orderId: params.get("orderId"),
+        paymentKey: params.get("paymentKey"),
+        amount: params.get("amount"),
+      });
+      setState({ busy: false, error: "", result });
+      refresh();
+      if (result.ok) navigate("/orders/" + result.bookingId);
+    } catch (e) {
+      setState({ busy: false, error: e.message, result: null });
+    }
+  }
+  return (
+    <section className="page">
+      <div className="panel">
+        <span className="eyebrow">PAYMENT STATUS</span>
+        <h1>{failed ? "付款未完成" : "核对并完成支付"}</h1>
+        <p>
+          {failed
+            ? "支付已取消或暂时未完成，请回到订单检查状态后重试。"
+            : "请确认完成支付。服务器将核对金额、预约有效期和支付机构结果；此页面本身不代表付款成功。"}
+        </p>
+        {state.error && <p className="notice error">{state.error}</p>}
+        {state.result?.pending && (
+          <p className="notice">结果仍在核对，请稍后查看订单。</p>
+        )}
+        <div className="actions">
+          {!failed && (
+            <Button disabled={state.busy} onClick={confirm}>
+              {state.busy ? "正在确认…" : "确认完成支付"}
+            </Button>
+          )}
+          <Button secondary onClick={() => navigate("/orders")}>
+            查看我的订单
+          </Button>
+        </div>
       </div>
     </section>
   );

@@ -26,7 +26,10 @@ function client() {
     if (r.headers.get("set-cookie"))
       cookie = r.headers.get("set-cookie").split(";")[0];
     const result = await r.json();
-    assert.equal(r.status, expected, JSON.stringify({ path, result }));
+    if (Array.isArray(expected)) {
+      assert.ok(expected.includes(r.status), JSON.stringify({ path, result }));
+      result.httpStatus = r.status;
+    } else assert.equal(r.status, expected, JSON.stringify({ path, result }));
     if (result.csrf) csrf = result.csrf;
     return result;
   };
@@ -47,8 +50,14 @@ before(async () => {
   guest = client();
   other = client();
   reviewer = client();
-  await admin("/login", "POST", { email: "admin@example.test", password });
-  await reviewer("/login", "POST", { email: "review@example.test", password });
+  await admin("/admin/login", "POST", {
+    email: "admin@example.test",
+    password,
+  });
+  await reviewer("/admin/login", "POST", {
+    email: "review@example.test",
+    password,
+  });
   await guide("/register", "POST", {
     email: "guide@example.test",
     password,
@@ -343,11 +352,16 @@ test("concurrent accepts cannot double-book, quote tampering rejected, guest can
       .id;
   const guide2 = client();
   await guide2("/login", "POST", { email: "guide@example.test", password });
-  await Promise.all([
-    guide("/bookings/" + a + "/accept", "POST", {}),
-    guide2("/bookings/" + c + "/accept", "POST", {}, 409),
+  const responses = await Promise.all([
+    guide("/bookings/" + a + "/accept", "POST", {}, [200, 409]),
+    guide2("/bookings/" + c + "/accept", "POST", {}, [200, 409]),
   ]);
-  await guest("/bookings/" + a + "/cancel", "POST", {
+  assert.deepEqual(responses.map((r) => r.httpStatus).sort(), [200, 409]);
+  const winner =
+    responses[0].httpStatus === 200
+      ? { client: guest, id: a }
+      : { client: other, id: c };
+  await winner.client("/bookings/" + winner.id + "/cancel", "POST", {
     reason: "Plans changed",
   });
   assert.equal((await guest(search({ time: "16:00", hours: 1 }))).length, 1);

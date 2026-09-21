@@ -1,4 +1,6 @@
 import http from "node:http";
+import { createPayments } from "./payments.mjs";
+import { createChat } from "./chat.mjs";
 import { DatabaseSync } from "node:sqlite";
 import {
   randomBytes,
@@ -50,6 +52,7 @@ export function createApp({
   dbPath = process.env.DATABASE_PATH || resolve(ROOT, "data/platform.sqlite"),
   secure = process.env.NODE_ENV === "production",
   manualPayments = process.env.MANUAL_PAYMENTS === "true",
+  paymentOptions = {},
 } = {}) {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
@@ -133,6 +136,7 @@ export function createApp({
       "SELECT * FROM bookings WHERE status IN ('requested','awaiting_payment') AND expires<=?",
       now(),
     )) {
+      if (payments.busy(b.id)) continue;
       run(
         "UPDATE bookings SET status='expired',updated=? WHERE id=?",
         now(),
@@ -256,7 +260,21 @@ export function createApp({
     notify(b.guest_id, text, b.id);
     notify(b.guide_user, text, b.id);
   };
+  const payments = createPayments({
+    db,
+    q,
+    one,
+    run,
+    transaction,
+    log,
+    admins,
+    participants,
+    ...paymentOptions,
+  });
+  const chat = createChat({ db, q, one, run, transaction, notify, log });
   const serialize = (b) => ({
+    conversationId: chat.byBooking(b.id),
+    onlinePayment: payments.summary(b.id),
     ...b,
     purposes: jsonList(b.purposes),
     guideName: one(
@@ -324,6 +342,8 @@ export function createApp({
       } catch {
         fail("请求格式错误");
       }
+      if (!data || typeof data !== "object" || Array.isArray(data))
+        fail("请求必须是JSON对象", 400);
       const origin = req.headers.origin;
       if (
         origin &&
@@ -331,8 +351,22 @@ export function createApp({
         origin !== process.env.APP_ORIGIN
       )
         fail("请求来源不受信任", 403);
-      if (u && req.headers["x-csrf-token"] !== u.csrf)
+      if (
+        path !== "/api/payments/toss/webhook" &&
+        u &&
+        req.headers["x-csrf-token"] !== u.csrf
+      )
         fail("会话校验失败，请刷新页面", 403);
+    }
+    if (path === "/api/payments/toss/webhook" && method === "POST")
+      return payments.webhook(data);
+    if (path === "/api/payments/toss/confirm" && method === "POST") {
+      need(u);
+      const bid = payments.lookup(clean(data.orderId, 64));
+      if (!bid) fail("支付订单不存在", 404);
+      const b = booking(bid, u);
+      if (u.id !== b.guest_id) fail("仅付款游客可确认支付", 403);
+      return payments.confirm(bid, data);
     }
     if (path === "/api/health" && method === "GET")
       return { ok: one("SELECT 1 ok").ok === 1 };
@@ -341,6 +375,7 @@ export function createApp({
         user: safeUser(u),
         csrf: u?.csrf,
         manualPayments,
+        payments: payments.config,
         settings: settings(),
       };
     if (path === "/api/register" && method === "POST") {
@@ -349,7 +384,10 @@ export function createApp({
       log(user, "account.registered", user.id);
       return cookie(res, user);
     }
-    if (path === "/api/login" && method === "POST") {
+    if (
+      ["/api/login", "/api/guide/login", "/api/admin/login"].includes(path) &&
+      method === "POST"
+    ) {
       const email = clean(data.email, 254).toLowerCase(),
         key = hash(`${req.socket.remoteAddress}:${email}`),
         attempt = one("SELECT * FROM login_attempts WHERE key=?", key);
@@ -374,6 +412,13 @@ export function createApp({
         );
         fail("邮箱或密码不正确", 401);
       }
+      const isStaff = ["admin", "support", "finance", "reviewer"].includes(
+        user.role,
+      );
+      if (path === "/api/admin/login" ? !isStaff : isStaff)
+        fail("请使用与你的账户身份对应的登录入口", 403);
+      if (path === "/api/guide/login" && user.role !== "guide")
+        fail("此入口仅供地陪账户登录", 403);
       run("DELETE FROM login_attempts WHERE key=?", key);
       return cookie(res, user);
     }
@@ -624,6 +669,19 @@ export function createApp({
         );
       return rows.map(serialize);
     }
+    if (path === "/api/conversations" && method === "GET") return chat.list(u);
+    const cm = path.match(/^\/api\/conversations\/([^/]+)\/(messages|read)$/);
+    if (cm) {
+      if (cm[2] === "messages" && method === "GET")
+        return chat.messages(cm[1], u, url.searchParams);
+      if (cm[2] === "messages" && method === "POST")
+        return chat.send(cm[1], u, data);
+      if (cm[2] === "read" && method === "POST")
+        return chat.read(cm[1], u, data.lastSequence);
+      fail("不支持此操作", 405);
+    }
+    const acm = path.match(/^\/api\/admin\/conversations\/([^/]+)\/audit$/);
+    if (acm && method === "POST") return chat.auditRead(acm[1], u, data);
     const bm = path.match(/^\/api\/bookings\/([^/]+)(?:\/([^/]+))?$/);
     if (bm) {
       let b = booking(bm[1], u),
@@ -631,10 +689,12 @@ export function createApp({
       if (!action && method === "GET")
         return {
           ...serialize(b),
-          messages: q(
-            "SELECT m.*,u.name FROM messages m JOIN users u ON m.user_id=u.id WHERE booking_id=? ORDER BY m.created",
-            b.id,
-          ),
+          messages: [b.guest_id, b.guide_user].includes(u.id)
+            ? q(
+                "SELECT m.*,u.name FROM messages m JOIN users u ON m.user_id=u.id WHERE booking_id=? ORDER BY m.created LIMIT 100",
+                b.id,
+              )
+            : [],
           cases: q(
             "SELECT * FROM cases WHERE booking_id=? ORDER BY created DESC",
             b.id,
@@ -650,20 +710,39 @@ export function createApp({
           review: one("SELECT * FROM reviews WHERE booking_id=?", b.id) || null,
         };
       if (method !== "POST") fail("不支持此操作", 405);
+      if (["checkout", "payment-sync", "refund-online"].includes(action)) {
+        if (action === "checkout") {
+          if (u.id !== b.guest_id) fail("仅游客本人可付款", 403);
+          return payments.checkout(b.id);
+        }
+        if (action === "refund-online") {
+          role(u, "admin", "finance");
+          return payments.refund(b.id, data, u);
+        }
+        if (u.id !== b.guest_id && !["admin", "finance"].includes(u.role))
+          fail("无支付核对权限", 403);
+        return payments.sync(b.id);
+      }
+      if (
+        [
+          "cancel",
+          "confirm-payment",
+          "refund",
+          "settle",
+          "propose-change",
+        ].includes(action) &&
+        (payments.busy(b.id) || payments.pendingRefund(b.id))
+      )
+        fail("支付或退款正在核对，请稍后操作", 409);
+      if (
+        ["confirm-payment", "refund", "payment-report"].includes(action) &&
+        payments.attempt(b.id)
+      )
+        fail("此订单已进入在线支付流程，请通过支付渠道核对或原路退款", 409);
       if (action === "messages") {
-        if (u.role === "finance") fail("无消息操作权限", 403);
-        const body = clean(data.body);
-        if (!body) fail("请输入消息");
-        run(
-          "INSERT INTO messages VALUES(?,?,?,?,?)",
-          id(),
-          b.id,
-          u.id,
-          body,
-          now(),
-        );
-        participants(b, "订单有新消息");
-        return { ok: true };
+        const cid = chat.byBooking(b.id);
+        if (!cid) fail("地陪确认接单后将自动开启会话", 409);
+        return chat.send(cid, u, { ...data, clientId: data.clientId || id() });
       }
       if (action === "accept") {
         if (u.id !== b.guide_user) fail("仅地陪可接受", 403);
@@ -683,7 +762,11 @@ export function createApp({
             now(),
             b.id,
           );
-          participants(b, "地陪已接受预约，请在付款期限内完成付款");
+          chat.ensure(b.id);
+          participants(
+            b,
+            "地陪已接受预约，专属会话已开启，请在付款期限内完成付款",
+          );
           log(u, "booking.accept", b.id);
           return { ok: true };
         });
@@ -705,7 +788,7 @@ export function createApp({
           fail("当前状态无法取消");
         const reason = clean(data.reason);
         if (!reason) fail("请说明取消原因");
-        if (b.payment_status === "paid") {
+        if (["paid", "partially_refunded"].includes(b.payment_status)) {
           run(
             "INSERT INTO cases VALUES(?,?,?,?,?,?,'open','',?)",
             id(),
@@ -1241,6 +1324,15 @@ export function createApp({
     try {
       let url = new URL(req.url, "http://localhost");
       if (url.pathname.startsWith("/api/")) {
+        if (
+          process.env.BACKEND_GATEWAY_TOKEN &&
+          url.pathname !== "/api/health"
+        ) {
+          const actual = hash(String(req.headers["x-gateway-token"] || ""));
+          const expected = hash(process.env.BACKEND_GATEWAY_TOKEN);
+          if (!timingSafeEqual(Buffer.from(actual), Buffer.from(expected)))
+            fail("接口不可直接访问", 403);
+        }
         res.setHeader("Cache-Control", "no-store");
         const result = await api(req, res, url);
         res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -1288,6 +1380,7 @@ export function createApp({
   const timer = setInterval(() => {
     try {
       expire();
+      void payments.sweep();
     } catch (e) {
       console.error(e);
     }
@@ -1297,7 +1390,7 @@ export function createApp({
     clearInterval(timer);
     db.close();
   });
-  return { server, db, createUser, settings };
+  return { server, db, createUser, settings, payments };
 }
 if (
   process.argv[1] &&
