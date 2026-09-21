@@ -1,7 +1,7 @@
 name: Android preview APK
 on:
   push:
-    branches: [rebuild/full-platform]
+    branches: [rebuild/full-platform, 'claude/**']
     paths: ['src/**', 'public/**', 'android/**', 'package*.json', 'capacitor.config.json', 'scripts/build-mobile.mjs', '.github/workflows/mobile-android.yml']
   workflow_dispatch:
 permissions:
@@ -11,17 +11,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle
+            android/gradle/wrapper/gradle-wrapper.properties
+      # v4 installs only platform-tools; v3 still asked for the retired `tools`
+      # package, so every run died in setup with "Failed to find package 'tools'".
+      - uses: android-actions/setup-android@v4
+        with:
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0'
       - run: npm ci
       - run: npm test
       - run: npm run mobile:preview
@@ -29,8 +37,9 @@ jobs:
           VITE_API_ORIGIN: ${{ vars.MOBILE_API_ORIGIN || 'https://koreamate-du4rgw200-lbtg9806-8210s-projects.vercel.app' }}
       - run: npx cap sync android
       - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: KoreaMate-Android-preview
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
           retention-days: 14
