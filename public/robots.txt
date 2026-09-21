@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /orders
+Disallow: /messages
+Disallow: /guide
+Disallow: /payments
+Disallow: /api/
+
+Sitemap: https://koreamate.com/sitemap.xml
