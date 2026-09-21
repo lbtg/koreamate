@@ -8,3 +8,13 @@ data/
 .env.*
 !.env.example
 artifacts/
+
+android/.gradle/
+android/local.properties
+android/**/build/
+ios/App/Pods/
+ios/App/build/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision

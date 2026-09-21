@@ -713,7 +713,7 @@ export function createApp({
       if (["checkout", "payment-sync", "refund-online"].includes(action)) {
         if (action === "checkout") {
           if (u.id !== b.guest_id) fail("仅游客本人可付款", 403);
-          return payments.checkout(b.id);
+          return payments.checkout(b.id, data.client === "app");
         }
         if (action === "refund-online") {
           role(u, "admin", "finance");
@@ -1358,6 +1358,7 @@ export function createApp({
           ".svg": "image/svg+xml",
           ".jpg": "image/jpeg",
           ".png": "image/png",
+          ".webmanifest": "application/manifest+json",
         }[extname(path)] || "application/octet-stream",
       );
       res.end(readFileSync(path));

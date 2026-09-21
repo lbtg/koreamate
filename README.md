@@ -121,3 +121,7 @@ pnpm run build
 Vercel 使用 `npm run build:showcase`。没有后端配置时只提供公开示例检索和登录页面，游客、地陪和管理员都不能跳过登录进入账户，也没有可切换的假身份。配置并部署 `BACKEND_ORIGIN` 后会连接真实服务，不再加载预览资料。标准 `npm run build` 构建始终要求真实后端。
 
 游客登录 `/login`，地陪登录 `/guide/login`，独立管理员登录 `/admin/login`。管理员不出现在游客页面的公开入口里。详细配置和当前仍需完成的外部接入见 [部署接入说明](deploy/README.md)。
+
+## 手机 App
+
+现已加入可安装 PWA、手机底部导航及 Android / iOS 工程，完整说明见 [mobile/README.md](mobile/README.md)。所有端共用现有后端；新增 App 工程并不会自动开通真实商户或服务器。

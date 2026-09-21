@@ -1,0 +1,36 @@
+name: Android preview APK
+on:
+  push:
+    branches: [rebuild/full-platform]
+    paths: ['src/**', 'public/**', 'android/**', 'package*.json', 'capacitor.config.json', 'scripts/build-mobile.mjs', '.github/workflows/mobile-android.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - run: npm ci
+      - run: npm test
+      - run: npm run mobile:preview
+        env:
+          VITE_API_ORIGIN: ${{ vars.MOBILE_API_ORIGIN || 'https://koreamate-du4rgw200-lbtg9806-8210s-projects.vercel.app' }}
+      - run: npx cap sync android
+      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KoreaMate-Android-preview
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14

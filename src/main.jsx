@@ -32,6 +32,18 @@ import {
 } from "lucide-react";
 import "./platform.css";
 import ChatCenter from "./chat.jsx";
+import {
+  MobileNavigation,
+  AccountPage,
+  ConnectionNotice,
+  PaymentHandoff,
+} from "./mobile.jsx";
+import {
+  requestAPI,
+  nativeApp,
+  openCheckout,
+  startMobileRuntime,
+} from "./mobile-runtime.js";
 const purposes = {
   tourism: ["旅游", "관광"],
   business: ["商业", "비즈니스"],
@@ -117,12 +129,7 @@ async function api(path, method = "GET", body) {
     path !== "/session"
   )
     return (await import("./showcase.js")).showcaseApi(path, method, body);
-  const r = await fetch("/api" + path, {
-    method,
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  const r = await requestAPI(path, method, body, csrf);
   let data;
   try {
     data = await r.json();
@@ -291,8 +298,12 @@ function App() {
   useEffect(() => {
     const f = () => setRoute(location.pathname);
     window.addEventListener("popstate", f);
+    window.addEventListener("km-resume", refresh);
     reloadSession();
-    return () => window.removeEventListener("popstate", f);
+    return () => {
+      window.removeEventListener("popstate", f);
+      window.removeEventListener("km-resume", refresh);
+    };
   }, []);
   useEffect(() => {
     localStorage.setItem("km-language", lang);
@@ -353,6 +364,7 @@ function App() {
   }
   return (
     <>
+      <ConnectionNotice />
       {session?.preview && (
         <div className="showcase-bar">
           <strong>
@@ -542,6 +554,15 @@ function App() {
             />
           ) : route.startsWith("/guides/") ? (
             <GuideDetail {...ctx} id={route.split("/")[2]} />
+          ) : route === "/account" ? (
+            <AccountPage {...ctx} />
+          ) : !nativeApp &&
+            ["/payments/success", "/payments/fail"].includes(route) &&
+            new URLSearchParams(location.search).get("client") === "app" ? (
+            <PaymentHandoff
+              failed={route === "/payments/fail"}
+              navigate={navigate}
+            />
           ) : !user ? (
             <Auth
               {...ctx}
@@ -590,6 +611,15 @@ function App() {
           </small>
         </div>
       </footer>
+      {!adminZone && (
+        <MobileNavigation
+          route={route}
+          user={user}
+          navigate={navigate}
+          unread={chatUnread}
+          t={t}
+        />
+      )}
       {toast && (
         <div className="toast" role="status">
           {toast}
@@ -1423,9 +1453,13 @@ function OrderDetail(ctx) {
     setBusy(true);
     setFailure("");
     try {
-      const result = await api(`/bookings/${id}/${action}`, "POST", data);
+      const result = await api(
+        `/bookings/${id}/${action}`,
+        "POST",
+        action === "checkout" && nativeApp ? { ...data, client: "app" } : data,
+      );
       if (action === "checkout") {
-        window.location.assign(result.url);
+        await openCheckout(result.url);
         return true;
       }
       if (action === "refund-online") setRefundKey(crypto.randomUUID());
@@ -3014,4 +3048,6 @@ function AdminAudit({ revision }) {
     </State>
   );
 }
-createRoot(document.getElementById("root")).render(<App />);
+startMobileRuntime()
+  .catch(() => {})
+  .finally(() => createRoot(document.getElementById("root")).render(<App />));

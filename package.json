@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "packageManager": "pnpm@11.19.0",
+  "packageManager": "npm@11.9.0",
   "engines": {
     "node": ">=24"
   },
@@ -15,14 +15,26 @@
     "start": "node server/app.mjs",
     "test": "node --test tests/*.test.mjs",
     "create-admin": "node server/app.mjs --create-admin",
-    "build:showcase": "vite build --mode showcase"
+    "build:showcase": "vite build --mode showcase",
+    "mobile:build": "node scripts/build-mobile.mjs",
+    "mobile:preview": "node scripts/build-mobile.mjs --preview",
+    "mobile:sync": "cap sync",
+    "mobile:android": "cap open android",
+    "mobile:ios": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
+    "vite": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
 }

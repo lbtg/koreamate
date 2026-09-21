@@ -297,7 +297,7 @@ export function createPayments({
     }
     return apply(p, attempt(a.booking_id));
   }
-  async function checkout(bid) {
+  async function checkout(bid, mobile = false) {
     required();
     return exclusive(bid, async () => {
       const b = booking(bid);
@@ -336,8 +336,9 @@ export function createPayments({
             currency: "KRW",
             orderId: a.order_id,
             orderName: "KoreaMate 地陪预约",
-            successUrl: origin + "/payments/success",
-            failUrl: origin + "/payments/fail",
+            successUrl:
+              origin + "/payments/success" + (mobile ? "?client=app" : ""),
+            failUrl: origin + "/payments/fail" + (mobile ? "?client=app" : ""),
           },
           "km-create-" + a.order_id,
         );

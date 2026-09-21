@@ -382,3 +382,24 @@ test("provider amount mismatch leaves booking unpaid", async (t) => {
     0,
   );
 });
+
+test("App checkout returns through the trusted website then requires the original authenticated confirmation", async (t) => {
+  const s = await setup(t);
+  await s.guest("/bookings/" + s.b.id + "/checkout", "POST", {
+    client: "app",
+    returnUrl: "https://untrusted.example",
+  });
+  const call = s.calls.find((c) => c.path === "/v1/payments");
+  assert.equal(
+    call.data.successUrl,
+    "https://koreamate.example/payments/success?client=app",
+  );
+  assert.equal(
+    call.data.failUrl,
+    "https://koreamate.example/payments/fail?client=app",
+  );
+  const params = s.auth();
+  await s.other("/payments/toss/confirm", "POST", params, 403);
+  await s.guest("/payments/toss/confirm", "POST", params);
+  assert.equal((await s.guest("/bookings/" + s.b.id)).status, "confirmed");
+});
