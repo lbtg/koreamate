@@ -8,4 +8,4 @@ Disallow: /guide
 Disallow: /payments
 Disallow: /api/
 
-Sitemap: https://koreamate.com/sitemap.xml
+Sitemap: https://hikoreamate.com/sitemap.xml

@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://koreamate.com/</loc>
+    <loc>https://hikoreamate.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://koreamate.com/join</loc>
+    <loc>https://hikoreamate.com/join</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://koreamate.com/login</loc>
+    <loc>https://hikoreamate.com/login</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://koreamate.com/guide/login</loc>
+    <loc>https://hikoreamate.com/guide/login</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
