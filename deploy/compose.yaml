@@ -1,0 +1,17 @@
+# Run from repository root: docker compose -f deploy/compose.yaml up -d --build
+services:
+  platform:
+    build: ..
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3001
+      NODE_ENV: production
+      DATABASE_PATH: /app/data/platform.sqlite
+    volumes:
+      - platform-data:/app/data
+    ports:
+      - '127.0.0.1:3001:3001'
+volumes:
+  platform-data:

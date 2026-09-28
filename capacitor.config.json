@@ -1,0 +1,9 @@
+{
+  "appId": "com.koreamate.app",
+  "appName": "KoreaMate",
+  "webDir": "dist",
+  "server": { "androidScheme": "https" },
+  "ios": { "contentInset": "automatic" },
+  "android": { "allowMixedContent": false },
+  "plugins": { "CapacitorHttp": { "enabled": false } }
+}
