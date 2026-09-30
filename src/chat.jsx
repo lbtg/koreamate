@@ -200,7 +200,7 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                     <strong>{c.peerName}</strong>
                     <small>{time(c.lastMessageAt)}</small>
                   </div>
-                  <p>{c.lastMessage || "地陪已接单，可以开始沟通了。"}</p>
+                  <p>{c.lastMessage || "随行翻译已接单，可以开始沟通了。"}</p>
                   <small>
                     {statuses[c.status]} · 订单 {c.bookingId.slice(0, 8)}
                   </small>
@@ -218,7 +218,7 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
           ) : (
             <div className="empty">
               <MessageCircle />
-              <p>地陪确认接单后，会话会自动出现在这里。</p>
+              <p>随行翻译确认接单后，会话会自动出现在这里。</p>
             </div>
           )}
         </aside>
@@ -244,7 +244,7 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                   <h2>{info?.peerName || "正在加载会话…"}</h2>
                   <small>
                     {info
-                      ? `${info.peerRole === "guide" ? "你的地陪" : "预约游客"} · ${statuses[info.status]} · `
+                      ? `${info.peerRole === "guide" ? "你的随行翻译" : "预约游客"} · ${statuses[info.status]} · `
                       : ""}
                     {connected ? "每5秒同步消息" : "正在重新连接"}
                   </small>

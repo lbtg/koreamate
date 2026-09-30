@@ -13,7 +13,7 @@ import { mkdirSync, existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const purposes = ["tourism", "business", "medical", "concert"];
+const purposes = ["shopping", "business", "medical", "concert"];
 const cities = ["seoul", "busan", "incheon", "jeju"];
 const now = () => Date.now(),
   id = () => randomUUID();
@@ -83,15 +83,26 @@ export function createApp({
     bufferMinutes: 30,
     settlementHours: 24,
     heroTitle: "与当地人一起，走进韩国",
-    heroSubtitle: "按你的时间和目的，寻找合适的韩国地陪。",
+    heroSubtitle: "按你的时间和目的，寻找合适的韩国随行翻译。",
     support: "平台客服",
     rules:
-      "预约需由地陪确认后付款。服务内容、集合地点及额外支出请在订单消息中确认。取消或退款申请由平台按订单约定处理。",
-    faq: "所有预约时间均为韩国时间。平台审核通过的地陪才能接受预约。医疗类别仅用于匹配已核准的陪同服务范围，不提供诊断或治疗。",
+      "预约需由随行翻译确认后付款。服务内容、集合地点及额外支出请在订单消息中确认。取消或退款申请由平台按订单约定处理。",
+    faq: "所有预约时间均为韩国时间。平台审核通过的随行翻译才能接受预约。医疗类别仅用于匹配已核准的陪同服务范围，不提供诊断或治疗。",
     paymentInstructions: "",
   };
   for (const [k, v] of Object.entries(defaults))
     run("INSERT OR IGNORE INTO settings VALUES(?,?)", k, JSON.stringify(v));
+  // The 'tourism' purpose became 'shopping' when the service was narrowed to
+  // interpretation and accompaniment; rewrite rows written under the old key.
+  for (const table of ["guides", "bookings"])
+    run(
+      `UPDATE ${table} SET purposes=replace(purposes,'tourism','shopping') WHERE purposes LIKE '%tourism%'`,
+    );
+  // Editable copy was seeded before the rename, so INSERT OR IGNORE leaves the old
+  // wording on servers that are already running.
+  run(
+    "UPDATE settings SET value=replace(value,'地陪','随行翻译') WHERE value LIKE '%地陪%'",
+  );
   const settings = () =>
     Object.fromEntries(
       q("SELECT * FROM settings").map((x) => [x.key, JSON.parse(x.value)]),
@@ -418,7 +429,7 @@ export function createApp({
       if (path === "/api/admin/login" ? !isStaff : isStaff)
         fail("请使用与你的账户身份对应的登录入口", 403);
       if (path === "/api/guide/login" && user.role !== "guide")
-        fail("此入口仅供地陪账户登录", 403);
+        fail("此入口仅供随行翻译账户登录", 403);
       run("DELETE FROM login_attempts WHERE key=?", key);
       return cookie(res, user);
     }
@@ -433,7 +444,7 @@ export function createApp({
     }
     if (path === "/api/guides" && method === "GET") {
       const city = get("city") || "seoul",
-        ps = (get("purposes") || "tourism").split(",");
+        ps = (get("purposes") || "shopping").split(",");
       if (!cities.includes(city) || ps.some((p) => !purposes.includes(p)))
         fail("筛选条件无效");
       const adults = integer(get("adults") || 1, 1, 12),
@@ -481,7 +492,7 @@ export function createApp({
         "SELECT * FROM guides WHERE id=? AND status='approved' AND paused=0",
         gm[1],
       );
-      if (!g) fail("地陪暂不可预约", 404);
+      if (!g) fail("随行翻译暂不可预约", 404);
       return {
         ...publicGuide(g),
         reviews: q(
@@ -539,7 +550,7 @@ export function createApp({
           image,
           now(),
         );
-        admins("有地陪资料等待审核");
+        admins("有随行翻译资料等待审核");
         log(u, "guide.submitted", gid);
         return { ok: true };
       }
@@ -603,7 +614,7 @@ export function createApp({
           "SELECT * FROM guides WHERE id=? AND status='approved' AND paused=0",
           data.guideId,
         );
-        if (!g) fail("地陪暂不可预约");
+        if (!g) fail("随行翻译暂不可预约");
         if (g.is_demo) fail("演示资料不接受真实预约");
         const { start, end } = timeInput(data.date, data.time, data.hours),
           adults = integer(data.adults, 1, 12),
@@ -741,11 +752,11 @@ export function createApp({
         fail("此订单已进入在线支付流程，请通过支付渠道核对或原路退款", 409);
       if (action === "messages") {
         const cid = chat.byBooking(b.id);
-        if (!cid) fail("地陪确认接单后将自动开启会话", 409);
+        if (!cid) fail("随行翻译确认接单后将自动开启会话", 409);
         return chat.send(cid, u, { ...data, clientId: data.clientId || id() });
       }
       if (action === "accept") {
-        if (u.id !== b.guide_user) fail("仅地陪可接受", 403);
+        if (u.id !== b.guide_user) fail("仅随行翻译可接受", 403);
         return transaction(() => {
           b = booking(b.id, u);
           if (b.status !== "requested") fail("订单状态已改变", 409);
@@ -755,7 +766,7 @@ export function createApp({
             g.paused ||
             !fits(g, b.start, b.end, b.id)
           )
-            fail("档期已冲突或地陪不可接单", 409);
+            fail("档期已冲突或随行翻译不可接单", 409);
           run(
             "UPDATE bookings SET status='awaiting_payment',expires=?,updated=? WHERE id=?",
             Math.min(now() + settings().paymentMinutes * 60000, b.start),
@@ -765,7 +776,7 @@ export function createApp({
           chat.ensure(b.id);
           participants(
             b,
-            "地陪已接受预约，专属会话已开启，请在付款期限内完成付款",
+            "随行翻译已接受预约，专属会话已开启，请在付款期限内完成付款",
           );
           log(u, "booking.accept", b.id);
           return { ok: true };
@@ -779,7 +790,7 @@ export function createApp({
           now(),
           b.id,
         );
-        participants(b, "地陪未能接受预约");
+        participants(b, "随行翻译未能接受预约");
         log(u, "booking.reject", b.id, clean(data.reason));
         return { ok: true };
       }
@@ -878,7 +889,7 @@ export function createApp({
           b.status !== "confirmed" ||
           now() < b.start - 900000
         )
-          fail("仅地陪可在开始前15分钟内确认开始");
+          fail("仅随行翻译可在开始前15分钟内确认开始");
         run(
           "UPDATE bookings SET status='in_service',updated=? WHERE id=?",
           now(),
@@ -896,7 +907,7 @@ export function createApp({
           now(),
           b.id,
         );
-        participants(b, "地陪已申请结束服务，请游客确认");
+        participants(b, "随行翻译已申请结束服务，请游客确认");
         return { ok: true };
       }
       if (action === "complete") {
@@ -1140,7 +1151,7 @@ export function createApp({
       if (path === "/api/admin/guide" && method === "POST") {
         role(u, "admin", "reviewer");
         const g = one("SELECT * FROM guides WHERE id=?", data.id);
-        if (!g) fail("地陪不存在");
+        if (!g) fail("随行翻译不存在");
         if (
           !["approved", "rejected", "needs_changes", "suspended"].includes(
             data.status,
@@ -1162,7 +1173,7 @@ export function createApp({
       if (path === "/api/admin/availability" && method === "POST") {
         role(u, "admin", "support");
         const g = one("SELECT * FROM guides WHERE id=?", data.guideId);
-        if (!g) fail("地陪不存在");
+        if (!g) fail("随行翻译不存在");
         if (!clean(data.reason)) fail("请填写原因");
         if (data.removeId)
           run(
@@ -1274,7 +1285,7 @@ export function createApp({
         const target = one("SELECT * FROM users WHERE id=?", data.id);
         if (!target) fail("用户不存在");
         if (guideFor(target) && data.role !== "guide")
-          fail("已关联地陪资料的账户不能改为其他角色");
+          fail("已关联随行翻译资料的账户不能改为其他角色");
         run("UPDATE users SET role=? WHERE id=?", data.role, data.id);
         run("DELETE FROM sessions WHERE user_id=?", data.id);
         log(u, "user.role", data.id, data.role);

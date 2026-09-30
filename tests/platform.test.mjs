@@ -83,7 +83,7 @@ after(async () => {
 });
 const profile = {
   city: "seoul",
-  purposes: ["tourism", "medical"],
+  purposes: ["shopping", "medical"],
   bio: "真实陪同服务范围",
   languages: "한국어, 中文",
   chineseLevel: "fluent",
@@ -101,7 +101,7 @@ const search = (overrides = {}) =>
     hours: 3,
     adults: 2,
     children: 0,
-    purposes: "tourism",
+    purposes: "shopping",
     ...overrides,
   });
 const request = (overrides) => ({
@@ -111,7 +111,7 @@ const request = (overrides) => ({
   hours: 3,
   adults: 2,
   children: 0,
-  purposes: ["tourism"],
+  purposes: ["shopping"],
   note: "测试预约",
   ...overrides,
 });
@@ -143,11 +143,11 @@ test("guide application approval and complete slot matching across separate acco
   assert.equal(found[0].total, 105000);
   assert.equal((await guest(search({ adults: 5 }))).length, 0);
   assert.equal(
-    (await guest(search({ purposes: "tourism,concert" }))).length,
+    (await guest(search({ purposes: "shopping,concert" }))).length,
     0,
   );
   assert.equal(
-    (await guest(search({ purposes: "tourism,medical" }))).length,
+    (await guest(search({ purposes: "shopping,medical" }))).length,
     1,
   );
   assert.equal((await guest(search({ time: "17:00" }))).length, 0);

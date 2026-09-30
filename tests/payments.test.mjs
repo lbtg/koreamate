@@ -128,7 +128,7 @@ async function setup(t) {
   });
   await guide("/guide/profile", "POST", {
     city: "seoul",
-    purposes: ["tourism"],
+    purposes: ["shopping"],
     bio: "Test guide",
     languages: "中文",
     chineseLevel: "fluent",
@@ -151,7 +151,7 @@ async function setup(t) {
     hours: 3,
     adults: 1,
     children: 0,
-    purposes: ["tourism"],
+    purposes: ["shopping"],
   };
   const b = await guest("/bookings", "POST", request);
   await guide("/bookings/" + b.id + "/accept", "POST", {});

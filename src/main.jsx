@@ -46,7 +46,7 @@ import {
   startMobileRuntime,
 } from "./mobile-runtime.js";
 const purposes = {
-  tourism: ["旅游", "관광"],
+  shopping: ["购物陪同", "쇼핑 동행"],
   business: ["商业", "비즈니스"],
   medical: ["医疗", "의료 동행"],
   concert: ["演唱会", "콘서트"],
@@ -68,7 +68,7 @@ const styles = {
   professional: ["专业高效", "전문적이고 효율적"],
 };
 const statusLabels = {
-  requested: ["待地陪确认", "수락 대기"],
+  requested: ["待随行翻译确认", "수락 대기"],
   awaiting_payment: ["待付款", "결제 대기"],
   confirmed: ["预约已确认", "예약 확정"],
   rejected: ["未被接受", "거절됨"],
@@ -97,7 +97,7 @@ const settleLabels = {
 };
 const roles = {
   guest: "游客",
-  guide: "地陪",
+  guide: "随行翻译",
   admin: "管理员",
   support: "客服",
   finance: "财务",
@@ -261,7 +261,7 @@ function App() {
       hours: Number(p.get("hours") || 3),
       adults: Number(p.get("adults") || 1),
       children: Number(p.get("children") || 0),
-      purposes: (p.get("purposes") || "tourism")
+      purposes: (p.get("purposes") || "shopping")
         .split(",")
         .filter((v) => v in purposes),
       budget: p.get("budget") || "",
@@ -369,7 +369,7 @@ function App() {
       {session?.preview && (
         <div className="showcase-bar">
           <strong>
-            界面预览 · 示例地陪资料 · 正式注册、预约和收款尚未开放
+            界面预览 · 示例随行翻译资料 · 正式注册、预约和收款尚未开放
           </strong>
         </div>
       )}
@@ -404,7 +404,7 @@ function App() {
                 className={route === "/" ? "active" : ""}
                 onClick={() => navigate("/")}
               >
-                {t("寻找地陪", "메이트 찾기")}
+                {t("寻找随行翻译", "메이트 찾기")}
               </button>
               {user && (
                 <button onClick={() => navigate("/orders")}>
@@ -423,12 +423,12 @@ function App() {
               )}
               {user?.role === "guide" && (
                 <button onClick={() => navigate("/guide")}>
-                  {t("地陪工作台", "메이트 관리")}
+                  {t("随行翻译工作台", "메이트 관리")}
                 </button>
               )}
               {!user && (
                 <button onClick={() => navigate("/join")}>
-                  {t("成为地陪", "메이트 지원")}
+                  {t("成为随行翻译", "메이트 지원")}
                 </button>
               )}
             </nav>
@@ -438,7 +438,7 @@ function App() {
                   className="text-button"
                   onClick={() => navigate("/guide/login")}
                 >
-                  {t("地陪登录", "메이트 로그인")}
+                  {t("随行翻译登录", "메이트 로그인")}
                 </button>
               )}
               <button
@@ -644,7 +644,7 @@ function App() {
 }
 function PurposePicker({ value, onChange, t }) {
   const icons = {
-    tourism: HeartHandshake,
+    shopping: HeartHandshake,
     business: BriefcaseBusiness,
     medical: Stethoscope,
     concert: Music2,
@@ -856,7 +856,7 @@ function Home(ctx) {
           <div className="search-bottom">
             <span>
               {t(
-                "先选择地陪，确认接单后再付款。",
+                "先选择随行翻译，确认接单后再付款。",
                 "메이트 수락 후 결제합니다.",
               )}
             </span>
@@ -864,7 +864,7 @@ function Home(ctx) {
               <Search size={18} />
               {loading
                 ? t("正在匹配…", "검색 중…")
-                : t("寻找合适的地陪", "메이트 찾기")}
+                : t("寻找合适的随行翻译", "메이트 찾기")}
             </Button>
           </div>
           {error && (
@@ -880,7 +880,7 @@ function Home(ctx) {
             <div>
               <span className="eyebrow">YOUR MATCHES</span>
               <h2>
-                {t("符合你行程的地陪", "일정에 맞는 메이트")}{" "}
+                {t("符合你行程的随行翻译", "일정에 맞는 메이트")}{" "}
                 <span className="count">{results.length}</span>
               </h2>
               <p>
@@ -990,7 +990,7 @@ function Home(ctx) {
               <CalendarDays size={32} />
               <h3>
                 {t(
-                  "这个时段暂时没有合适的地陪",
+                  "这个时段暂时没有合适的随行翻译",
                   "조건에 맞는 메이트가 없습니다",
                 )}
               </h3>
@@ -1031,7 +1031,7 @@ function Home(ctx) {
               "02",
               t("双方确认安排", "함께 일정 확정"),
               t(
-                "地陪接受预约后，再确认付款与集合安排。",
+                "随行翻译接受预约后，再确认付款与集合安排。",
                 "수락 후 결제하고 만날 장소를 정하세요.",
               ),
             ],
@@ -1158,11 +1158,11 @@ function Auth({
             ? "管理账户登录"
             : register
               ? t(
-                  portal === "guide" ? "申请成为地陪" : "创建游客账户",
+                  portal === "guide" ? "申请成为随行翻译" : "创建游客账户",
                   "계정 만들기",
                 )
               : t(
-                  portal === "guide" ? "地陪登录" : "游客登录",
+                  portal === "guide" ? "随行翻译登录" : "游客登录",
                   "다시 만나 반가워요",
                 )}
         </h2>
@@ -1250,7 +1250,7 @@ function GuideDetail(ctx) {
         note,
         expectedTotal: g.rate * search.hours,
       });
-      message(t("预约申请已提交，等待地陪确认", "예약 신청 완료"));
+      message(t("预约申请已提交，等待随行翻译确认", "예약 신청 완료"));
       navigate("/orders/" + b.id);
     } catch (e) {
       setFailure(e.message);
@@ -1283,7 +1283,7 @@ function GuideDetail(ctx) {
                 </div>
               </div>
               <div className="section-block">
-                <h3>{t("认识你的地陪", "메이트 소개")}</h3>
+                <h3>{t("认识你的随行翻译", "메이트 소개")}</h3>
                 <p className="prose">{g.bio}</p>
                 <div className="tags">
                   {g.purposes.map((p) => (
@@ -1383,7 +1383,7 @@ function GuideDetail(ctx) {
               </Button>
               <p className="small muted">
                 {t(
-                  "地陪确认后付款。提交时会再次核对档期及价格。",
+                  "随行翻译确认后付款。提交时会再次核对档期及价格。",
                   "수락 후 결제. 신청 시 가능 시간을 다시 확인합니다.",
                 )}
               </p>
@@ -1412,7 +1412,7 @@ function Orders(ctx) {
         </div>
         {user.role === "guest" && (
           <Button onClick={() => navigate("/")}>
-            {t("寻找地陪", "메이트 찾기")}
+            {t("寻找随行翻译", "메이트 찾기")}
             <Plus size={17} />
           </Button>
         )}
@@ -1560,7 +1560,7 @@ function OrderDetail(ctx) {
             {b.expires &&
               ["requested", "awaiting_payment"].includes(b.status) && (
                 <div className="notice">
-                  {b.status === "requested" ? "地陪响应" : "付款"}截止时间：
+                  {b.status === "requested" ? "随行翻译响应" : "付款"}截止时间：
                   {kst(b.expires)}。超时后自动关闭。
                 </div>
               )}
@@ -1573,7 +1573,9 @@ function OrderDetail(ctx) {
                   <Button
                     secondary
                     disabled={busy}
-                    onClick={() => act("reject", { reason: "地陪无法承接" })}
+                    onClick={() =>
+                      act("reject", { reason: "随行翻译无法承接" })
+                    }
                   >
                     {t("拒绝", "거절")}
                   </Button>
@@ -1695,7 +1697,7 @@ function OrderDetail(ctx) {
                   </p>
                   <p>{c.reason}</p>
                   <p>
-                    游客：{c.guest_ok ? "已同意" : "待确认"} / 地陪：
+                    游客：{c.guest_ok ? "已同意" : "待确认"} / 随行翻译：
                     {c.guide_ok ? "已同意" : "待确认"}
                   </p>
                   {(isGuest || isGuide) && (
@@ -1811,7 +1813,7 @@ function OrderDetail(ctx) {
             ) : (
               <p className="muted">
                 {isGuest || isGuide
-                  ? "地陪确认接单后，系统会自动为双方开启独立会话。"
+                  ? "随行翻译确认接单后，系统会自动为双方开启独立会话。"
                   : "聊天不向财务或其他账户开放。客服处理售后时须记录调阅原因。"}
               </p>
             )}
@@ -1860,7 +1862,7 @@ function OrderDetail(ctx) {
                   <b>{money(b.commission)}</b>
                 </div>
                 <div className="summary-line">
-                  <span>退款调整后地陪应收</span>
+                  <span>退款调整后随行翻译应收</span>
                   <b>{money(net)}</b>
                 </div>
                 <div className="summary-line">
@@ -1877,7 +1879,7 @@ function OrderDetail(ctx) {
             <div className="panel">
               <h3>财务操作</h3>
               <p className="small muted">
-                在线支付订单可通过支付机构原路退款；人工收付款与地陪结算仍需登记实际流水。
+                在线支付订单可通过支付机构原路退款；人工收付款与随行翻译结算仍需登记实际流水。
               </p>
               {b.onlinePayment && (
                 <div className="section-block">
@@ -1997,7 +1999,7 @@ function OrderDetail(ctx) {
                 b.payment_status !== "unpaid" &&
                 b.settlement_status !== "paid" && (
                   <details className="action-detail">
-                    <summary>登记地陪结算</summary>
+                    <summary>登记随行翻译结算</summary>
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -2198,7 +2200,7 @@ function GuideWorkspace(ctx) {
       <div className="section-top">
         <div>
           <span className="eyebrow">MATE WORKSPACE</span>
-          <h1>{t("你的地陪工作台", "메이트 관리")}</h1>
+          <h1>{t("你的随行翻译工作台", "메이트 관리")}</h1>
           <p>
             {t(
               "管理资料、开放档期，并安排每一次同行。",
@@ -2272,7 +2274,7 @@ function GuideWorkspace(ctx) {
   );
 }
 function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
-  const [ps, setPs] = useState(p?.purposes || ["tourism"]);
+  const [ps, setPs] = useState(p?.purposes || ["shopping"]);
   return (
     <form
       className="panel form-wide"
@@ -2579,7 +2581,7 @@ function Admin(ctx) {
     [error, setError] = useState("");
   const names = {
     stats: "运营概览",
-    guides: "地陪与档期",
+    guides: "随行翻译与档期",
     orders: "订单与财务",
     cases: "售后处理",
     reviews: "评价审核",
@@ -2665,7 +2667,7 @@ function AdminStats({ revision }) {
         <>
           <div className="metrics">
             <Metric
-              label="已审核 / 地陪总数"
+              label="已审核 / 随行翻译总数"
               value={`${s.approved} / ${s.guides}`}
             />
             <Metric label="累计搜索" value={s.searches} />
@@ -2817,7 +2819,7 @@ function AdminGuides({ revision, save, busy, user, t }) {
                     <input name="end" type="time" required />
                   </Field>
                 </div>
-                <Field label="与地陪沟通后的调整原因">
+                <Field label="与随行翻译沟通后的调整原因">
                   <input name="reason" required />
                 </Field>
                 <label className="check-line">
@@ -2825,7 +2827,7 @@ function AdminGuides({ revision, save, busy, user, t }) {
                   关闭该时段（不选则开放）
                 </label>
                 <Button secondary disabled={busy}>
-                  保存并通知地陪
+                  保存并通知随行翻译
                 </Button>
               </form>
             )}

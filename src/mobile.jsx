@@ -80,7 +80,7 @@ export function InstallCard() {
       <Download size={23} />
       <div>
         <b>把 KoreaMate 放到手机桌面</b>
-        <p>随时查看预约，与同行地陪保持联系。</p>
+        <p>随时查看预约，与同行随行翻译保持联系。</p>
         <button
           className="button"
           onClick={async () => {
@@ -128,11 +128,11 @@ export function AccountPage({ user, navigate, logout, t }) {
               <ChevronRight />
             </button>
             <button onClick={() => navigate("/guide/login")}>
-              地陪登录
+              随行翻译登录
               <ChevronRight />
             </button>
             <button onClick={() => navigate("/join")}>
-              申请成为地陪
+              申请成为随行翻译
               <ChevronRight />
             </button>
           </>
@@ -166,7 +166,7 @@ export function AccountPage({ user, navigate, logout, t }) {
       </div>
       <InstallCard />
       <p className="small muted">
-        旅游 · 商业 · 医疗 · 演唱会
+        购物 · 商业 · 医疗 · 演唱会
         <br />
         服务时间均为韩国时间（UTC+9）。
       </p>
