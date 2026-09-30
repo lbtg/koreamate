@@ -103,7 +103,7 @@ const roles = {
   finance: "财务",
   reviewer: "审核人员",
 };
-const money = (n) => "₩" + Number(n || 0).toLocaleString("ko-KR");
+const money = (n) => "¥" + Number(n || 0).toLocaleString("zh-CN");
 const kst = (n) =>
   new Intl.DateTimeFormat("zh-CN", {
     timeZone: "Asia/Seoul",
@@ -751,7 +751,7 @@ function SearchFields({ search, setSearch, t, labels }) {
           )}
         </summary>
         <div className="form-grid three">
-          <Field label={t("本次服务预算上限（韩元）", "총 예산 한도 (원)")}>
+          <Field label={t("本次服务预算上限（人民币）", "총 예산 한도 (위안)")}>
             <input
               type="number"
               min="1"
@@ -2324,7 +2324,10 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
           </select>
         </Field>
         <Field
-          label={t("每小时价格（韩元，按团）", "시간당 가격 (그룹 기준, 원)")}
+          label={t(
+            "每小时价格（人民币，按团）",
+            "시간당 가격 (그룹 기준, 위안)",
+          )}
         >
           <input
             name="rate"
