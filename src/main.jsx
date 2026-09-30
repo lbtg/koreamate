@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import "./platform.css";
 import ChatCenter from "./chat.jsx";
+import { LEGAL, LegalPage } from "./legal.jsx";
 import {
   MobileNavigation,
   AccountPage,
@@ -569,6 +570,8 @@ function App() {
               portal={route.startsWith("/guide") ? "guide" : "guest"}
               returnTo={route + location.search}
             />
+          ) : LEGAL[route] ? (
+            <LegalPage route={route} navigate={navigate} />
           ) : route === "/payments/success" || route === "/payments/fail" ? (
             <PaymentReturn {...ctx} failed={route === "/payments/fail"} />
           ) : route === "/messages" || route.startsWith("/messages/") ? (
@@ -609,6 +612,17 @@ function App() {
             © {new Date().getFullYear()} KoreaMate ·{" "}
             {t("所有服务时间均为韩国时间", "모든 시간은 한국 시간 기준")}
           </small>
+          <nav className="legal-nav">
+            {Object.entries(LEGAL).map(([path, page]) => (
+              <button
+                key={path}
+                className="text-button"
+                onClick={() => navigate(path)}
+              >
+                {page.title}
+              </button>
+            ))}
+          </nav>
         </div>
       </footer>
       {!adminZone && (
