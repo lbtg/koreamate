@@ -17,6 +17,25 @@
 5. 进入服务器终端，安全地临时设置 `ADMIN_EMAIL`、`ADMIN_PASSWORD`、`ADMIN_NAME`，使用相同数据库执行 `node server/app.mjs --create-admin`；Docker 可使用 `docker compose exec -e ... platform ...` 传入本机已有环境变量。创建后移除临时管理员密码变量。
 6. 给数据卷配置加密备份和恢复演练。可停服务做一致性快照，或者使用 SQLite 的在线备份工具；不能只复制活跃数据库文件而忽略 WAL。
 
+## 数据库备份
+
+ECS 快照和文件备份保住的是机器，保不住数据库的一致性：数据库跑在 WAL 模式下，
+整盘快照可能拍到写了一半的文件。`deploy/backup-db.sh` 用 SQLite 的在线备份接口
+（`.backup`）导出，再做一次 `PRAGMA integrity_check`，校验不过就丢弃，不会用坏文件
+顶掉好文件。
+
+```sh
+sudo apt-get install -y sqlite3
+sudo install -m 755 deploy/backup-db.sh /usr/local/bin/koreamate-backup
+sudo /usr/local/bin/koreamate-backup                      # 先手动跑一次
+sudo crontab -l 2>/dev/null | { cat; echo '20 19 * * * /usr/local/bin/koreamate-backup'; } | sudo crontab -
+```
+
+备份写到 `/var/backups/koreamate/`，保留 30 天，每次结果记在同目录的 `backup.log`。
+可用 `KOREAMATE_DB`、`KOREAMATE_BACKUP_DIR`、`KOREAMATE_KEEP_DAYS` 覆盖默认值。
+备份文件和服务器在同一块盘上，所以要定期用 `scp` 或对象存储把它挪到机器之外，
+并按季度做一次真实的恢复演练——恢复步骤写在脚本头部注释里。
+
 ## Vercel 配置
 
 在现有 `koreamate` 项目的环境变量里添加，且作用于需要启用的 Preview 或 Production 环境：

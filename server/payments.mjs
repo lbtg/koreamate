@@ -44,6 +44,13 @@ export function createPayments({
     !appOrigin.startsWith("https://")
   )
     throw Error("正式收款必须使用 HTTPS APP_ORIGIN");
+  // Prices are quoted in CNY but every Toss call below is KRW-only, so a live key here
+  // would authorize a number of won equal to the yuan price. Test keys move no money and
+  // keep this flow under test until a CNY-capable provider replaces it.
+  if (configured && secretKey.startsWith("live_"))
+    throw Error(
+      "平台以人民币计价，Toss 仅结算韩元；请接入支持 CNY 的收款渠道后再使用正式密钥",
+    );
   const origin = appOrigin ? new URL(appOrigin).origin : "";
   const config = {
     enabled: configured,
@@ -335,7 +342,7 @@ export function createPayments({
             amount: a.total,
             currency: "KRW",
             orderId: a.order_id,
-            orderName: "KoreaMate 地陪预约",
+            orderName: "KoreaMate 随行翻译预约",
             successUrl:
               origin + "/payments/success" + (mobile ? "?client=app" : ""),
             failUrl: origin + "/payments/fail" + (mobile ? "?client=app" : ""),

@@ -128,12 +128,13 @@ async function setup(t) {
   });
   await guide("/guide/profile", "POST", {
     city: "seoul",
-    purposes: ["tourism"],
+    purposes: ["shopping"],
     bio: "Test guide",
     languages: "中文",
     chineseLevel: "fluent",
     style: "friendly",
-    rate: 35000,
+    rate: 350,
+    pledge: true,
     capacity: 4,
   });
   const g = await guide("/guide/profile");
@@ -151,7 +152,7 @@ async function setup(t) {
     hours: 3,
     adults: 1,
     children: 0,
-    purposes: ["tourism"],
+    purposes: ["shopping"],
   };
   const b = await guest("/bookings", "POST", request);
   await guide("/bookings/" + b.id + "/accept", "POST", {});
@@ -232,7 +233,7 @@ test("checkout ignores client prices; confirmation requires owner, exact amount,
   await s.guest("/bookings/" + s.b.id + "/checkout", "POST", { amount: 1 });
   await s.checkout();
   assert.equal(s.calls.filter((c) => c.path === "/v1/payments").length, 1);
-  assert.equal(s.calls[0].data.amount, 105000);
+  assert.equal(s.calls[0].data.amount, 1050);
   const payload = s.auth();
   await s.other("/payments/toss/confirm", "POST", payload, 403);
   await s.guest(
@@ -337,7 +338,7 @@ test("refunds call provider, enforce finance role, persist unknown results and d
   await s.checkout();
   await s.guest("/payments/toss/confirm", "POST", s.auth());
   const d = {
-    amount: 25000,
+    amount: 250,
     reason: "partial cancellation",
     requestKey: randomUUID(),
   };
@@ -353,20 +354,20 @@ test("refunds call provider, enforce finance role, persist unknown results and d
   await s.app.payments.sweep();
   await s.admin("/bookings/" + s.b.id + "/refund-online", "POST", d);
   const partial = await s.guest("/bookings/" + s.b.id);
-  assert.equal(partial.refund, 25000);
+  assert.equal(partial.refund, 250);
   assert.equal(partial.payment_status, "partially_refunded");
   await s.guest("/bookings/" + s.b.id + "/cancel", "POST", {
     reason: "cancel remaining",
   });
   assert.equal((await s.guest("/bookings/" + s.b.id)).status, "confirmed");
   await s.admin("/bookings/" + s.b.id + "/refund-online", "POST", {
-    amount: 80000,
+    amount: 800,
     reason: "remaining refund",
     requestKey: randomUUID(),
     cancel: true,
   });
   const full = await s.guest("/bookings/" + s.b.id);
-  assert.equal(full.refund, 105000);
+  assert.equal(full.refund, 1050);
   assert.equal(full.status, "cancelled");
   assert.equal(full.ledger.filter((l) => l.kind === "refund").length, 2);
 });

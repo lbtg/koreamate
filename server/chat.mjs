@@ -41,7 +41,7 @@ export function createChat({ db, q, one, run, transaction, notify, log }) {
     );
     if (!c) fail("会话不存在", 404);
     if (u.id !== c.guest_id && u.id !== c.guide_user)
-      fail("只有本次预约的游客与地陪可以进入此会话", 403);
+      fail("只有本次预约的游客与随行翻译可以进入此会话", 403);
     return c;
   };
   const describe = (c, u) => ({
