@@ -2142,3 +2142,129 @@ td .text-button {
   margin-top: 4px;
   flex: none;
 }
+
+/* Service scenes: the six categories shown as the catalogue, each ending in 等等 so
+   the list reads as examples rather than a closed menu. */
+.scenes {
+  padding-top: 78px;
+  padding-bottom: 24px;
+}
+.scenes-head {
+  max-width: 660px;
+  margin-bottom: 46px;
+}
+.scenes-head h2 {
+  font-size: clamp(26px, 2.6vw, 34px);
+  letter-spacing: -0.6px;
+  margin-bottom: 14px;
+}
+.scenes-head p {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0;
+}
+.scene-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.scene-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 26px 26px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.58);
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.scene-card:hover {
+  border-color: #bbc9b4;
+  background: rgba(255, 255, 255, 0.92);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px -24px rgba(23, 58, 50, 0.6);
+}
+.scene-no {
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: #a9b4a6;
+}
+.scene-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 34px;
+}
+.scene-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(197, 89, 55, 0.09);
+  color: var(--orange);
+}
+.scene-card h3 {
+  font-size: 16.5px;
+  letter-spacing: -0.2px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scene-alt {
+  display: block;
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+  color: #9aa69a;
+  margin-top: 2px;
+}
+.scene-rule {
+  display: block;
+  width: 26px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--orange);
+  opacity: 0.45;
+  margin: 20px 0 14px;
+}
+.scene-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.scenes-note {
+  margin: 28px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: #8a948b;
+}
+@media (max-width: 980px) {
+  .scene-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 620px) {
+  .scenes {
+    padding-top: 52px;
+  }
+  .scene-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .scene-card {
+    padding: 22px 20px;
+  }
+  .scene-rule {
+    margin: 16px 0 12px;
+  }
+}

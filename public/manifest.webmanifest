@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "KoreaMate 韩国地陪",
+  "name": "KoreaMate 韩国随行翻译",
   "short_name": "KoreaMate",
-  "description": "旅游、商业、医疗、演唱会，寻找韩国同行伙伴。",
+  "description": "购物、手续、商务、就医、医美、活动，按小时预约中韩双语随行翻译。",
   "lang": "zh-CN",
   "start_url": "/?source=app",
   "scope": "/",

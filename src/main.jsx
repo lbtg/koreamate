@@ -55,6 +55,42 @@ const purposes = {
   beauty: ["医美陪同", "미용·성형 동행"],
   concert: ["活动陪同", "행사 동행"],
 };
+// Each scene list ends with 等等 / 등: the categories are examples of when someone
+// needs a bilingual companion, not a closed menu.
+const purposeScenes = {
+  shopping: [
+    "百货商场、免税店、美妆门店、传统市场等等",
+    "백화점, 면세점, 뷰티 매장, 전통시장 등",
+  ],
+  errands: [
+    "外国人登录证、银行开户、手机开通、看房租房、入学与宿舍手续等等",
+    "외국인등록, 은행 계좌 개설, 통신 개통, 부동산, 입학·기숙사 수속 등",
+  ],
+  business: [
+    "商务会面、合作洽谈、展会参观、工厂考察、采购对接等等",
+    "비즈니스 미팅, 상담, 전시회, 공장 방문, 소싱 등",
+  ],
+  medical: [
+    "医院挂号、问诊沟通、检查陪同、用药说明等等",
+    "접수, 진료 통역, 검사 동행, 복약 안내 등",
+  ],
+  beauty: [
+    "皮肤科、整形外科的面诊沟通与术后随访等等",
+    "피부과·성형외과 상담 통역, 사후 관리 소통 등",
+  ],
+  concert: [
+    "演唱会、粉丝见面会、展览、体育赛事、线下活动等等",
+    "콘서트, 팬미팅, 전시, 스포츠 경기, 오프라인 행사 등",
+  ],
+};
+const purposeIcons = {
+  shopping: ShoppingBag,
+  errands: ClipboardList,
+  business: BriefcaseBusiness,
+  medical: Stethoscope,
+  beauty: Sparkles,
+  concert: Music2,
+};
 const cities = {
   seoul: ["首尔", "서울"],
   busan: ["釜山", "부산"],
@@ -647,14 +683,7 @@ function App() {
   );
 }
 function PurposePicker({ value, onChange, t }) {
-  const icons = {
-    shopping: ShoppingBag,
-    errands: ClipboardList,
-    business: BriefcaseBusiness,
-    medical: Stethoscope,
-    beauty: Sparkles,
-    concert: Music2,
-  };
+  const icons = purposeIcons;
   return (
     <div className="purpose-picker">
       {Object.entries(purposes).map(([k, v]) => {
@@ -1014,6 +1043,47 @@ function Home(ctx) {
           )}
         </section>
       )}
+      <section className="page scenes">
+        <header className="scenes-head">
+          <span className="eyebrow">WHAT WE INTERPRET</span>
+          <h2>{t("需要有人替你开口的时刻", "말이 필요한 모든 순간")}</h2>
+          <p>
+            {t(
+              "按小时预约中韩双语随行翻译。以下是最常被预约的六类场景，实际需求不限于此。",
+              "시간 단위로 한·중 통역 동행을 예약하세요. 아래는 가장 많이 찾는 여섯 가지 상황이며, 이에 한정되지 않습니다.",
+            )}
+          </p>
+        </header>
+        <div className="scene-grid">
+          {Object.entries(purposes).map(([key, label], i) => {
+            const I = purposeIcons[key];
+            return (
+              <article className="scene-card" key={key}>
+                <span className="scene-no">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div className="scene-top">
+                  <span className="scene-icon">
+                    <I size={19} strokeWidth={1.6} />
+                  </span>
+                  <div>
+                    <h3>{t(label[0], label[1])}</h3>
+                    <span className="scene-alt">{t(label[1], label[0])}</span>
+                  </div>
+                </div>
+                <span className="scene-rule" />
+                <p>{t(purposeScenes[key][0], purposeScenes[key][1])}</p>
+              </article>
+            );
+          })}
+        </div>
+        <p className="scenes-note">
+          {t(
+            "随行翻译只提供语言沟通与现场陪同，不提供景点导览讲解，也不安排行程或代订交通住宿。",
+            "통역사는 언어 소통과 현장 동행만 제공하며, 관광 안내·일정 구성·교통 및 숙박 예약은 하지 않습니다.",
+          )}
+        </p>
+      </section>
       <section className="page how">
         <div>
           <span className="eyebrow">A LITTLE MORE LOCAL</span>
