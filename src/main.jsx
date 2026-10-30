@@ -442,7 +442,10 @@ function App() {
       {session?.preview && (
         <div className="showcase-bar">
           <strong>
-            界面预览 · 示例随行翻译资料 · 正式注册、预约和收款尚未开放
+            {t(
+              "界面预览 · 示例随行翻译资料 · 正式注册、预约和收款尚未开放",
+              "화면 미리보기 · 예시 통역사 프로필 · 실제 가입, 예약, 결제는 아직 열리지 않았습니다",
+            )}
           </strong>
         </div>
       )}
@@ -2982,7 +2985,7 @@ function AdminStats({ revision, t }) {
             />
             <Metric label={t("累计搜索", "누적 검색")} value={s.searches} />
             <Metric label={t("预约申请", "예약 신청")} value={s.bookings} />
-            <Metric label="已付款订单" value={s.paid} />
+            <Metric label={t("已付款订单", "결제 완료 예약")} value={s.paid} />
             <Metric
               label={t("已完成订单", "완료된 예약")}
               value={s.completed}
@@ -3080,38 +3083,51 @@ function AdminGuides({ revision, save, busy, user, t }) {
               <Field label={t("处理结果", "처리 결과")}>
                 <select name="status">
                   <option value="approved">{t("批准上架", "승인")}</option>
-                  <option value="needs_changes">退回补充资料</option>
-                  <option value="rejected">拒绝申请</option>
-                  <option value="suspended">下架</option>
+                  <option value="needs_changes">
+                    {t("退回补充资料", "보완 요청")}
+                  </option>
+                  <option value="rejected">{t("拒绝申请", "신청 거절")}</option>
+                  <option value="suspended">{t("下架", "노출 중단")}</option>
                 </select>
               </Field>
-              <Field label="审核意见 / 原因">
+              <Field label={t("审核意见 / 原因", "심사 의견 / 사유")}>
                 <input
                   name="reason"
                   required
-                  placeholder="请记录实际核验情况"
+                  placeholder={t(
+                    "请记录实际核验情况",
+                    "실제 확인 내용을 기록해 주세요",
+                  )}
                 />
               </Field>
-              <Button disabled={busy}>保存审核结果</Button>
+              <Button disabled={busy}>
+                {t("保存审核结果", "심사 결과 저장")}
+              </Button>
             </form>
           )}
           <details className="action-detail">
-            <summary>查看和协助调整档期</summary>
+            <summary>{t("查看和协助调整档期", "일정 확인 및 조정")}</summary>
             {g.availability.length ? (
               g.availability.map((a) => (
                 <div className="slot-row" key={a.id}>
                   <span>
                     {a.date ||
-                      ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][
-                        a.weekday
-                      ]}{" "}
+                      [
+                        t("周日", "일"),
+                        t("周一", "월"),
+                        t("周二", "화"),
+                        t("周三", "수"),
+                        t("周四", "목"),
+                        t("周五", "금"),
+                        t("周六", "토"),
+                      ][a.weekday]}{" "}
                     {hm(a.start)}—{hm(a.end)}
                   </span>
-                  <b>{a.blocked ? "关闭" : "开放"}</b>
+                  <b>{a.blocked ? t("关闭", "차단") : t("开放", "가능")}</b>
                 </div>
               ))
             ) : (
-              <p>尚未设置档期</p>
+              <p>{t("尚未设置档期", "설정된 일정이 없습니다")}</p>
             )}
             {["admin", "support"].includes(user.role) && (
               <form
@@ -3128,17 +3144,22 @@ function AdminGuides({ revision, save, busy, user, t }) {
                 }}
               >
                 <div className="form-grid three">
-                  <Field label="日期">
+                  <Field label={t("日期", "날짜")}>
                     <input name="date" type="date" required min={day(0)} />
                   </Field>
-                  <Field label="开始">
+                  <Field label={t("开始", "시작")}>
                     <input name="start" type="time" required />
                   </Field>
-                  <Field label="结束">
+                  <Field label={t("结束", "종료")}>
                     <input name="end" type="time" required />
                   </Field>
                 </div>
-                <Field label="与随行翻译沟通后的调整原因">
+                <Field
+                  label={t(
+                    "与随行翻译沟通后的调整原因",
+                    "통역사와 협의한 조정 사유",
+                  )}
+                >
                   <input name="reason" required />
                 </Field>
                 <label className="check-line">
@@ -3165,11 +3186,11 @@ function AdminCases({ revision, save, busy, navigate, t }) {
           <div className="row">
             <h3>
               {{
-                payment: "付款核对",
-                cancellation: "取消申请",
-                refund: "退款申请",
-                complaint: "投诉",
-                review_appeal: "评价申诉",
+                payment: t("付款核对", "결제 확인"),
+                cancellation: t("取消申请", "취소 신청"),
+                refund: t("退款申请", "환불 신청"),
+                complaint: t("投诉", "불만"),
+                review_appeal: t("评价申诉", "후기 이의"),
               }[c.kind] || c.kind}{" "}
               · {c.name}
             </h3>
@@ -3193,10 +3214,17 @@ function AdminCases({ revision, save, busy, navigate, t }) {
                 });
               }}
             >
-              <Field label="处理结果（退款请先在订单中登记）">
+              <Field
+                label={t(
+                  "处理结果（退款请先在订单中登记）",
+                  "처리 결과 (환불은 예약에서 먼저 등록)",
+                )}
+              >
                 <textarea name="resolution" required />
               </Field>
-              <Button disabled={busy}>记录结果并通知用户</Button>
+              <Button disabled={busy}>
+                {t("记录结果并通知用户", "결과 기록 후 통지")}
+              </Button>
             </form>
           ) : (
             <div className="notice">{c.resolution}</div>
@@ -3217,7 +3245,9 @@ function AdminReviews({ revision, save, busy }) {
           </h3>
           <p>{r.body}</p>
           <p className="small muted">
-            当前：{r.visible ? "公开" : "隐藏"} · {r.moderation_note}
+            {t("当前", "현재")}：
+            {r.visible ? t("公开", "공개") : t("隐藏", "숨김")} ·{" "}
+            {r.moderation_note}
           </p>
           <form
             className="inline-form"
@@ -3230,11 +3260,13 @@ function AdminReviews({ revision, save, busy }) {
               });
             }}
           >
-            <Field label="审核原因">
+            <Field label={t("审核原因", "심사 사유")}>
               <input name="reason" required />
             </Field>
             <Button secondary disabled={busy}>
-              {r.visible ? "隐藏违规评价" : "恢复公开"}
+              {r.visible
+                ? t("隐藏违规评价", "위반 후기 숨기기")
+                : t("恢复公开", "다시 공개")}
             </Button>
           </form>
         </div>
@@ -3252,33 +3284,42 @@ function AdminSettings({ session, save, busy }) {
         save("settings", Object.fromEntries(new FormData(e.currentTarget)));
       }}
     >
-      <h3>首页与帮助内容</h3>
+      <h3>{t("首页与帮助内容", "홈 화면 및 안내 문구")}</h3>
       {[
-        ["heroTitle", "首页标题"],
-        ["heroSubtitle", "首页说明"],
-        ["support", "客服联系方式"],
+        ["heroTitle", t("首页标题", "홈 제목")],
+        ["heroSubtitle", t("首页说明", "홈 설명")],
+        ["support", t("客服联系方式", "고객지원 연락처")],
       ].map(([k, label]) => (
         <Field label={label} key={k}>
           <input name={k} defaultValue={s[k]} required />
         </Field>
       ))}
       {[
-        ["rules", "预约规则与取消约定"],
-        ["faq", "常见问题"],
-        ["paymentInstructions", "人工收款说明（启用前需核实经营与收款安排）"],
+        ["rules", t("预约规则与取消约定", "예약 규칙 및 취소 약정")],
+        ["faq", t("常见问题", "자주 묻는 질문")],
+        [
+          "paymentInstructions",
+          t(
+            "人工收款说明（启用前需核实经营与收款安排）",
+            "수동 입금 안내 (사용 전 운영 및 수금 방식 확인 필요)",
+          ),
+        ],
       ].map(([k, label]) => (
         <Field label={label} key={k}>
           <textarea name={k} defaultValue={s[k]} />
         </Field>
       ))}
-      <h3>运营规则</h3>
+      <h3>{t("运营规则", "운영 규칙")}</h3>
       <div className="form-grid">
         {[
-          ["commission", "平台佣金比例 %"],
-          ["responseHours", "接单响应期限 小时"],
-          ["paymentMinutes", "付款期限 分钟"],
-          ["bufferMinutes", "两单交通缓冲 分钟"],
-          ["settlementHours", "完成后结算等待期 小时"],
+          ["commission", t("平台佣金比例 %", "플랫폼 수수료 %")],
+          ["responseHours", t("接单响应期限 小时", "수락 응답 기한 (시간)")],
+          ["paymentMinutes", t("付款期限 分钟", "결제 기한 (분)")],
+          ["bufferMinutes", t("两单交通缓冲 分钟", "예약 간 이동 여유 (분)")],
+          [
+            "settlementHours",
+            t("完成后结算等待期 小时", "완료 후 정산 대기 (시간)"),
+          ],
         ].map(([k, label]) => (
           <Field label={label} key={k}>
             <input
@@ -3295,7 +3336,9 @@ function AdminSettings({ session, save, busy }) {
       <div className="notice">
         在线支付未接入。人工收款还需服务器开启配置，填写说明不会自动启用。佣金修改仅影响新订单。
       </div>
-      <Button disabled={busy}>保存内容与规则</Button>
+      <Button disabled={busy}>
+        {t("保存内容与规则", "문구 및 규칙 저장")}
+      </Button>
     </form>
   );
 }
@@ -3307,10 +3350,10 @@ function AdminUsers({ revision, save, busy, user, t }) {
         <table>
           <thead>
             <tr>
-              <th>用户</th>
-              <th>邮箱</th>
-              <th>当前权限</th>
-              <th>变更</th>
+              <th>{t("用户", "사용자")}</th>
+              <th>{t("邮箱", "이메일")}</th>
+              <th>{t("当前权限", "현재 권한")}</th>
+              <th>{t("变更", "변경")}</th>
             </tr>
           </thead>
           <tbody>
@@ -3321,7 +3364,7 @@ function AdminUsers({ revision, save, busy, user, t }) {
                 <td>{pick(roles, u.role, t)}</td>
                 <td>
                   {u.id === user.id ? (
-                    "当前账户"
+                    t("当前账户", "현재 계정")
                   ) : (
                     <form
                       className="inline-form"
@@ -3362,17 +3405,17 @@ function AdminAudit({ revision }) {
         <table>
           <thead>
             <tr>
-              <th>时间</th>
-              <th>人员</th>
-              <th>操作</th>
-              <th>原因或详情</th>
+              <th>{t("时间", "시각")}</th>
+              <th>{t("人员", "담당자")}</th>
+              <th>{t("操作", "작업")}</th>
+              <th>{t("原因或详情", "사유 또는 상세")}</th>
             </tr>
           </thead>
           <tbody>
             {data?.map((a) => (
               <tr key={a.id}>
                 <td>{kst(a.created)}</td>
-                <td>{a.name || "系统"}</td>
+                <td>{a.name || t("系统", "시스템")}</td>
                 <td>
                   {a.action}
                   <small className="muted break">{a.target}</small>
