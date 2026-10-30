@@ -893,9 +893,11 @@ function Home(ctx) {
   }
   return (
     <>
-      <section className="hero">
+      <div className="stage-bg" aria-hidden="true">
         <HeroBackdrop />
         <div className="hero-shade" />
+      </div>
+      <section className="hero">
         <div className="hero-inner">
           <span className="eyebrow light">YOUR KOREA, YOUR PACE</span>
           <h1>
@@ -954,237 +956,239 @@ function Home(ctx) {
           )}
         </form>
       </section>
-      {results !== null && (
-        <section className="page results" id="results">
-          <div className="section-top">
-            <div>
-              <span className="eyebrow">YOUR MATCHES</span>
-              <h2>
-                {t("符合你行程的随行翻译", "일정에 맞는 메이트")}{" "}
-                <span className="count">{results.length}</span>
-              </h2>
-              <p>
-                {t(
-                  session.preview
-                    ? "以下为筛选效果演示；日期和时段不代表真实可预约档期。"
-                    : "已核对完整时段、陪同人数和所选服务场景。",
-                  "시간, 인원, 선택 목적을 모두 확인했습니다.",
-                )}
-              </p>
+      <div className="surface">
+        {results !== null && (
+          <section className="page results" id="results">
+            <div className="section-top">
+              <div>
+                <span className="eyebrow">YOUR MATCHES</span>
+                <h2>
+                  {t("符合你行程的随行翻译", "일정에 맞는 메이트")}{" "}
+                  <span className="count">{results.length}</span>
+                </h2>
+                <p>
+                  {t(
+                    session.preview
+                      ? "以下为筛选效果演示；日期和时段不代表真实可预约档期。"
+                      : "已核对完整时段、陪同人数和所选服务场景。",
+                    "시간, 인원, 선택 목적을 모두 확인했습니다.",
+                  )}
+                </p>
+              </div>
+              <Select
+                value={search.sort}
+                onChange={(v) => {
+                  setSearch((s) => ({ ...s, sort: v }));
+                  setResults((r) =>
+                    [...r].sort((a, b) =>
+                      v === "price"
+                        ? a.total - b.total
+                        : (b.rating || 0) - (a.rating || 0),
+                    ),
+                  );
+                }}
+                options={{
+                  recommended: t("评价优先", "평점순"),
+                  price: t("价格从低到高", "가격 낮은순"),
+                }}
+              />
             </div>
-            <Select
-              value={search.sort}
-              onChange={(v) => {
-                setSearch((s) => ({ ...s, sort: v }));
-                setResults((r) =>
-                  [...r].sort((a, b) =>
-                    v === "price"
-                      ? a.total - b.total
-                      : (b.rating || 0) - (a.rating || 0),
-                  ),
-                );
-              }}
-              options={{
-                recommended: t("评价优先", "평점순"),
-                price: t("价格从低到高", "가격 낮은순"),
-              }}
-            />
-          </div>
-          {results.length ? (
-            <div className="guide-grid">
-              {results.map((g) => (
-                <article className="guide-card" key={g.id}>
-                  <div className="portrait">
-                    {g.image ? (
-                      <img
-                        src={g.image}
-                        alt={g.name}
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="portrait-initial">
-                        {g.name.slice(0, 1)}
-                      </div>
-                    )}
-                    <span className="portrait-tag">
-                      <ShieldCheck size={14} />
-                      {g.isDemo ? "演示资料" : t("平台已审核", "심사 완료")}
-                    </span>
-                  </div>
-                  <div className="guide-body">
-                    <div className="row">
-                      <h3>{g.name}</h3>
-                      <span className="rating">
-                        <Star size={14} />
-                        {g.rating ? g.rating.toFixed(1) : t("新入驻", "신규")}
-                        {!!g.reviewCount && <small>({g.reviewCount})</small>}
+            {results.length ? (
+              <div className="guide-grid">
+                {results.map((g) => (
+                  <article className="guide-card" key={g.id}>
+                    <div className="portrait">
+                      {g.image ? (
+                        <img
+                          src={g.image}
+                          alt={g.name}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="portrait-initial">
+                          {g.name.slice(0, 1)}
+                        </div>
+                      )}
+                      <span className="portrait-tag">
+                        <ShieldCheck size={14} />
+                        {g.isDemo ? "演示资料" : t("平台已审核", "심사 완료")}
                       </span>
                     </div>
-                    <p>
-                      <MapPin size={14} />
-                      {labels(cities)[g.city]} · {g.languages}
-                    </p>
-                    <div className="tags">
-                      {g.purposes.map((p) => (
-                        <span key={p}>{labels(purposes)[p]}</span>
-                      ))}
-                    </div>
-                    <p className="bio-short">{g.bio}</p>
-                    <div className="guide-price">
-                      <div>
-                        <small>{t("本次服务总价", "선택 일정 총액")}</small>
-                        <strong>{money(g.total)}</strong>
-                        <small>
-                          {search.hours}
-                          {t("小时", "시간")} ·{" "}
-                          {Number(search.adults) + Number(search.children)}
-                          {t("人", "명")}
-                        </small>
+                    <div className="guide-body">
+                      <div className="row">
+                        <h3>{g.name}</h3>
+                        <span className="rating">
+                          <Star size={14} />
+                          {g.rating ? g.rating.toFixed(1) : t("新入驻", "신규")}
+                          {!!g.reviewCount && <small>({g.reviewCount})</small>}
+                        </span>
                       </div>
-                      <button
-                        className="circle-button"
-                        aria-label={`${t("查看", "보기")} ${g.name}`}
-                        onClick={() =>
-                          navigate(
-                            "/guides/" +
-                              g.id +
-                              "?" +
-                              new URLSearchParams({
-                                ...search,
-                                purposes: search.purposes.join(","),
-                              }),
-                          )
-                        }
-                      >
-                        <ArrowUpRight size={22} />
-                      </button>
+                      <p>
+                        <MapPin size={14} />
+                        {labels(cities)[g.city]} · {g.languages}
+                      </p>
+                      <div className="tags">
+                        {g.purposes.map((p) => (
+                          <span key={p}>{labels(purposes)[p]}</span>
+                        ))}
+                      </div>
+                      <p className="bio-short">{g.bio}</p>
+                      <div className="guide-price">
+                        <div>
+                          <small>{t("本次服务总价", "선택 일정 총액")}</small>
+                          <strong>{money(g.total)}</strong>
+                          <small>
+                            {search.hours}
+                            {t("小时", "시간")} ·{" "}
+                            {Number(search.adults) + Number(search.children)}
+                            {t("人", "명")}
+                          </small>
+                        </div>
+                        <button
+                          className="circle-button"
+                          aria-label={`${t("查看", "보기")} ${g.name}`}
+                          onClick={() =>
+                            navigate(
+                              "/guides/" +
+                                g.id +
+                                "?" +
+                                new URLSearchParams({
+                                  ...search,
+                                  purposes: search.purposes.join(","),
+                                }),
+                            )
+                          }
+                        >
+                          <ArrowUpRight size={22} />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">
+                <CalendarDays size={32} />
+                <h3>
+                  {t(
+                    "这个时段暂时没有合适的随行翻译",
+                    "조건에 맞는 메이트가 없습니다",
+                  )}
+                </h3>
+                <p>
+                  {t(
+                    "请调整日期或偏好。你也可以联系平台寻求帮助。",
+                    "날짜나 조건을 변경하거나 플랫폼에 문의하세요.",
+                  )}
+                </p>
+                <span>{session.settings.support}</span>
+              </div>
+            )}
+          </section>
+        )}
+        <section className="page scenes">
+          <header className="scenes-head">
+            <span className="eyebrow">WHAT WE INTERPRET</span>
+            <h2>{t("需要有人替你开口的时刻", "말이 필요한 모든 순간")}</h2>
+            <p>
+              {t(
+                "按小时预约中韩双语随行翻译。以下是最常被预约的六类场景，实际需求不限于此。",
+                "시간 단위로 한·중 통역 동행을 예약하세요. 아래는 가장 많이 찾는 여섯 가지 상황이며, 이에 한정되지 않습니다.",
+              )}
+            </p>
+          </header>
+          <div className="scene-grid">
+            {Object.entries(purposes).map(([key, label], i) => {
+              const I = purposeIcons[key];
+              return (
+                <article className="scene-card" key={key}>
+                  <span className="scene-no">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="scene-top">
+                    <span className="scene-icon">
+                      <I size={19} strokeWidth={1.6} />
+                    </span>
+                    <div>
+                      <h3>{t(label[0], label[1])}</h3>
+                      <span className="scene-alt">{t(label[1], label[0])}</span>
                     </div>
                   </div>
+                  <span className="scene-rule" />
+                  <p>{t(purposeScenes[key][0], purposeScenes[key][1])}</p>
                 </article>
-              ))}
-            </div>
-          ) : (
-            <div className="empty">
-              <CalendarDays size={32} />
-              <h3>
-                {t(
-                  "这个时段暂时没有合适的随行翻译",
-                  "조건에 맞는 메이트가 없습니다",
-                )}
-              </h3>
-              <p>
-                {t(
-                  "请调整日期或偏好。你也可以联系平台寻求帮助。",
-                  "날짜나 조건을 변경하거나 플랫폼에 문의하세요.",
-                )}
-              </p>
-              <span>{session.settings.support}</span>
-            </div>
-          )}
-        </section>
-      )}
-      <section className="page scenes">
-        <header className="scenes-head">
-          <span className="eyebrow">WHAT WE INTERPRET</span>
-          <h2>{t("需要有人替你开口的时刻", "말이 필요한 모든 순간")}</h2>
-          <p>
+              );
+            })}
+          </div>
+          <p className="scenes-note">
             {t(
-              "按小时预约中韩双语随行翻译。以下是最常被预约的六类场景，实际需求不限于此。",
-              "시간 단위로 한·중 통역 동행을 예약하세요. 아래는 가장 많이 찾는 여섯 가지 상황이며, 이에 한정되지 않습니다.",
+              "随行翻译只提供语言沟通与现场陪同，不提供景点导览讲解，也不安排行程或代订交通住宿。",
+              "통역사는 언어 소통과 현장 동행만 제공하며, 관광 안내·일정 구성·교통 및 숙박 예약은 하지 않습니다.",
             )}
           </p>
-        </header>
-        <div className="scene-grid">
-          {Object.entries(purposes).map(([key, label], i) => {
-            const I = purposeIcons[key];
-            return (
-              <article className="scene-card" key={key}>
-                <span className="scene-no">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div className="scene-top">
-                  <span className="scene-icon">
-                    <I size={19} strokeWidth={1.6} />
-                  </span>
-                  <div>
-                    <h3>{t(label[0], label[1])}</h3>
-                    <span className="scene-alt">{t(label[1], label[0])}</span>
-                  </div>
-                </div>
-                <span className="scene-rule" />
-                <p>{t(purposeScenes[key][0], purposeScenes[key][1])}</p>
-              </article>
-            );
-          })}
-        </div>
-        <p className="scenes-note">
-          {t(
-            "随行翻译只提供语言沟通与现场陪同，不提供景点导览讲解，也不安排行程或代订交通住宿。",
-            "통역사는 언어 소통과 현장 동행만 제공하며, 관광 안내·일정 구성·교통 및 숙박 예약은 하지 않습니다.",
-          )}
-        </p>
-      </section>
-      <section className="page how">
-        <div>
-          <span className="eyebrow">A LITTLE MORE LOCAL</span>
-          <h2>
-            {t(
-              "把陌生的城市，\n变成熟悉的一天。",
-              "낯선 도시에서,\n편안한 하루를.",
-            )}
-          </h2>
-        </div>
-        <div className="how-grid">
-          {[
-            [
-              Search,
-              "01",
-              t("按需求寻找", "조건 검색"),
-              t(
-                "选择日期、时间和目的，查看真实可用档期。",
-                "날짜와 목적에 맞는 가능 시간을 확인하세요.",
-              ),
-            ],
-            [
-              HeartHandshake,
-              "02",
-              t("双方确认安排", "함께 일정 확정"),
-              t(
-                "随行翻译接受预约后，再确认付款与集合安排。",
-                "수락 후 결제하고 만날 장소를 정하세요.",
-              ),
-            ],
-            [
-              MessageCircle,
-              "03",
-              t("有记录的同行", "기록이 남는 동행"),
-              t(
-                "行程沟通、订单进度与售后集中在同一处。",
-                "메시지, 예약 상태, 문의를 한 곳에서.",
-              ),
-            ],
-          ].map(([I, n, title, desc]) => (
-            <div key={n}>
-              <span className="step-no">{n}</span>
-              <I size={23} />
-              <h3>{title}</h3>
-              <p>{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="page info-section">
-        <details>
-          <summary>{t("预约与服务规则", "예약 및 서비스 안내")}</summary>
-          <p>{session.settings.rules}</p>
-        </details>
-        <details>
-          <summary>{t("常见问题", "자주 묻는 질문")}</summary>
-          <p>{session.settings.faq}</p>
-        </details>
-      </section>
+        </section>
+        <section className="page how">
+          <div>
+            <span className="eyebrow">A LITTLE MORE LOCAL</span>
+            <h2>
+              {t(
+                "把陌生的城市，\n变成熟悉的一天。",
+                "낯선 도시에서,\n편안한 하루를.",
+              )}
+            </h2>
+          </div>
+          <div className="how-grid">
+            {[
+              [
+                Search,
+                "01",
+                t("按需求寻找", "조건 검색"),
+                t(
+                  "选择日期、时间和目的，查看真实可用档期。",
+                  "날짜와 목적에 맞는 가능 시간을 확인하세요.",
+                ),
+              ],
+              [
+                HeartHandshake,
+                "02",
+                t("双方确认安排", "함께 일정 확정"),
+                t(
+                  "随行翻译接受预约后，再确认付款与集合安排。",
+                  "수락 후 결제하고 만날 장소를 정하세요.",
+                ),
+              ],
+              [
+                MessageCircle,
+                "03",
+                t("有记录的同行", "기록이 남는 동행"),
+                t(
+                  "行程沟通、订单进度与售后集中在同一处。",
+                  "메시지, 예약 상태, 문의를 한 곳에서.",
+                ),
+              ],
+            ].map(([I, n, title, desc]) => (
+              <div key={n}>
+                <span className="step-no">{n}</span>
+                <I size={23} />
+                <h3>{title}</h3>
+                <p>{desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="page info-section">
+          <details>
+            <summary>{t("预约与服务规则", "예약 및 서비스 안내")}</summary>
+            <p>{session.settings.rules}</p>
+          </details>
+          <details>
+            <summary>{t("常见问题", "자주 묻는 질문")}</summary>
+            <p>{session.settings.faq}</p>
+          </details>
+        </section>
+      </div>
     </>
   );
 }
