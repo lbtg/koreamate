@@ -10,16 +10,18 @@ const time = (n) =>
     hour12: false,
   }).format(new Date(n));
 const statuses = {
-  awaiting_payment: "待付款",
-  confirmed: "预约已确认",
-  in_service: "服务中",
-  completion_pending: "待确认完成",
-  completed: "已完成",
-  cancelled: "已取消",
-  expired: "已超时",
-  rejected: "未接受",
+  awaiting_payment: ["待付款", "결제 대기"],
+  confirmed: ["预约已确认", "예약 확정"],
+  in_service: ["服务中", "서비스 중"],
+  completion_pending: ["待确认完成", "완료 확인 대기"],
+  completed: ["已完成", "완료"],
+  cancelled: ["已取消", "취소됨"],
+  expired: ["已超时", "기한 만료"],
+  rejected: ["未接受", "거절됨"],
 };
-export default function ChatCenter({ api, id, user, navigate, refresh }) {
+// An unknown status still has to read as something, so fall back to its own key.
+const statusLabel = (t, key) => (statuses[key] ? t(...statuses[key]) : key);
+export default function ChatCenter({ api, id, user, navigate, refresh, t }) {
   const [conversations, setConversations] = useState([]),
     [info, setInfo] = useState(null),
     [messages, setMessages] = useState([]),
@@ -172,21 +174,29 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
       <div className="section-top">
         <div>
           <span className="eyebrow">YOUR CONVERSATIONS</span>
-          <h1>预约消息</h1>
-          <p>每笔预约一个独立会话，行程安排和沟通记录集中保存。</p>
+          <h1>{t("预约消息", "예약 메시지")}</h1>
+          <p>
+            {t(
+              "每笔预约一个独立会话，行程安排和沟通记录集中保存。",
+              "예약마다 전용 대화가 열리며, 일정과 대화 기록이 함께 보관됩니다.",
+            )}
+          </p>
         </div>
         <button className="text-button" onClick={() => navigate("/orders")}>
-          返回我的订单
+          {t("返回我的订单", "내 예약으로")}
         </button>
       </div>
       {failure && (
         <div className="notice error" role="alert">
-          {failure} · 将自动尝试重新连接
+          {failure} · {t("将自动尝试重新连接", "자동으로 다시 연결합니다")}
         </div>
       )}
       <div className={"chat-shell " + (id ? "has-thread" : "")}>
-        <aside className="chat-inbox" aria-label="预约会话列表">
-          <h3>全部会话</h3>
+        <aside
+          className="chat-inbox"
+          aria-label={t("预约会话列表", "예약 대화 목록")}
+        >
+          <h3>{t("全部会话", "전체 대화")}</h3>
           {conversations.length ? (
             conversations.map((c) => (
               <button
@@ -200,15 +210,25 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                     <strong>{c.peerName}</strong>
                     <small>{time(c.lastMessageAt)}</small>
                   </div>
-                  <p>{c.lastMessage || "随行翻译已接单，可以开始沟通了。"}</p>
+                  <p>
+                    {c.lastMessage ||
+                      t(
+                        "随行翻译已接单，可以开始沟通了。",
+                        "통역사가 예약을 수락했습니다. 대화를 시작하세요.",
+                      )}
+                  </p>
                   <small>
-                    {statuses[c.status]} · 订单 {c.bookingId.slice(0, 8)}
+                    {statusLabel(t, c.status)} · {t("订单", "예약")}{" "}
+                    {c.bookingId.slice(0, 8)}
                   </small>
                 </div>
                 {c.unread > 0 && (
                   <span
                     className="unread-pill"
-                    aria-label={`${c.unread}条未读`}
+                    aria-label={t(
+                      `${c.unread}条未读`,
+                      `읽지 않음 ${c.unread}건`,
+                    )}
                   >
                     {c.unread > 99 ? "99+" : c.unread}
                   </span>
@@ -218,7 +238,12 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
           ) : (
             <div className="empty">
               <MessageCircle />
-              <p>随行翻译确认接单后，会话会自动出现在这里。</p>
+              <p>
+                {t(
+                  "随行翻译确认接单后，会话会自动出现在这里。",
+                  "통역사가 예약을 수락하면 대화가 여기에 나타납니다.",
+                )}
+              </p>
             </div>
           )}
         </aside>
@@ -226,27 +251,46 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
           {!id ? (
             <div className="chat-welcome">
               <MessageCircle size={44} />
-              <h2>选择一次同行，开始沟通</h2>
-              <p>这里可以确认集合地点、路线、时间与服务范围。</p>
-              <p className="small muted">新预约不会与之前的聊天混在一起。</p>
+              <h2>{t("选择一次同行，开始沟通", "대화를 선택해 주세요")}</h2>
+              <p>
+                {t(
+                  "这里可以确认集合地点、路线、时间与服务范围。",
+                  "만날 장소, 동선, 시간과 서비스 범위를 여기에서 확인하세요.",
+                )}
+              </p>
+              <p className="small muted">
+                {t(
+                  "新预约不会与之前的聊天混在一起。",
+                  "새 예약의 대화는 이전 대화와 섞이지 않습니다.",
+                )}
+              </p>
             </div>
           ) : (
             <>
               <header className="thread-header">
                 <button
                   className="icon-btn"
-                  aria-label="返回会话列表"
+                  aria-label={t("返回会话列表", "대화 목록으로")}
                   onClick={() => navigate("/messages")}
                 >
                   <ArrowLeft size={20} />
                 </button>
                 <div>
-                  <h2>{info?.peerName || "正在加载会话…"}</h2>
+                  <h2>
+                    {info?.peerName ||
+                      t("正在加载会话…", "대화를 불러오는 중…")}
+                  </h2>
                   <small>
                     {info
-                      ? `${info.peerRole === "guide" ? "你的随行翻译" : "预约游客"} · ${statuses[info.status]} · `
+                      ? `${
+                          info.peerRole === "guide"
+                            ? t("你的随行翻译", "담당 통역사")
+                            : t("预约游客", "예약 이용자")
+                        } · ${statusLabel(t, info.status)} · `
                       : ""}
-                    {connected ? "每5秒同步消息" : "正在重新连接"}
+                    {connected
+                      ? t("每5秒同步消息", "5초마다 동기화")
+                      : t("正在重新连接", "다시 연결하는 중")}
                   </small>
                 </div>
                 {info && (
@@ -254,17 +298,21 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                     className="text-button"
                     onClick={() => navigate("/orders/" + info.bookingId)}
                   >
-                    查看订单
+                    {t("查看订单", "예약 보기")}
                   </button>
                 )}
               </header>
               {info && (
                 <div className="thread-booking">
-                  <strong>服务安排</strong>
+                  <strong>{t("服务安排", "서비스 일정")}</strong>
                   <span>
-                    {time(info.start)} — {time(info.end)} · 韩国时间
+                    {time(info.start)} — {time(info.end)} ·{" "}
+                    {t("韩国时间", "한국 시간")}
                   </span>
-                  <span>集合地点：{info.meeting || "待双方确认"}</span>
+                  <span>
+                    {t("集合地点", "만날 장소")}：
+                    {info.meeting || t("待双方确认", "양측 확인 대기")}
+                  </span>
                 </div>
               )}
               <div
@@ -272,7 +320,7 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                 ref={scroll}
                 onScroll={onScroll}
                 role="log"
-                aria-label="聊天记录"
+                aria-label={t("聊天记录", "대화 기록")}
                 aria-live="polite"
               >
                 {older && (
@@ -281,7 +329,9 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                     disabled={loadingOlder}
                     onClick={loadOlder}
                   >
-                    {loadingOlder ? "加载中…" : "查看更早消息"}
+                    {loadingOlder
+                      ? t("加载中…", "불러오는 중…")
+                      : t("查看更早消息", "이전 메시지 보기")}
                   </button>
                 )}
                 {messages.length ? (
@@ -302,10 +352,10 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                           {m.seq <= peerRead ? (
                             <>
                               <CheckCheck size={13} />
-                              已读
+                              {t("已读", "읽음")}
                             </>
                           ) : (
-                            "已发送"
+                            t("已发送", "전송됨")
                           )}
                         </small>
                       )}
@@ -314,15 +364,28 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                 ) : (
                   <div className="conversation-start">
                     <MessageCircle />
-                    <p>会话已为本次预约自动开启。</p>
-                    <span>打个招呼，确认一下当天的安排吧。</span>
+                    <p>
+                      {t(
+                        "会话已为本次预约自动开启。",
+                        "이번 예약을 위한 대화가 자동으로 열렸습니다.",
+                      )}
+                    </p>
+                    <span>
+                      {t(
+                        "打个招呼，确认一下当天的安排吧。",
+                        "인사를 건네고 당일 일정을 확인해 보세요.",
+                      )}
+                    </span>
                   </div>
                 )}
               </div>
               <div className="chat-compose">
                 {failedSend && (
                   <div className="notice error" role="alert">
-                    <p>消息未确认送达：{failedSend.error}</p>
+                    <p>
+                      {t("消息未确认送达", "메시지 전송이 확인되지 않았습니다")}
+                      ：{failedSend.error}
+                    </p>
                     <button
                       className="text-button"
                       disabled={sending}
@@ -330,9 +393,15 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                         deliver(failedSend.body, failedSend.clientId)
                       }
                     >
-                      重试同一条消息
+                      {t("重试同一条消息", "같은 메시지 다시 보내기")}
                     </button>
-                    <span className="small"> 重试不会重复发送。</span>
+                    <span className="small">
+                      {" "}
+                      {t(
+                        "重试不会重复发送。",
+                        "다시 보내도 중복 전송되지 않습니다.",
+                      )}
+                    </span>
                   </div>
                 )}
                 {info?.writable ? (
@@ -344,7 +413,7 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                     }}
                   >
                     <label className="sr-only" htmlFor="chat-draft">
-                      发送给预约对方的消息
+                      {t("发送给预约对方的消息", "예약 상대에게 보낼 메시지")}
                     </label>
                     <textarea
                       id="chat-draft"
@@ -352,29 +421,44 @@ export default function ChatCenter({ api, id, user, navigate, refresh }) {
                       disabled={sending || !!failedSend}
                       onChange={(e) => setDraft(e.target.value)}
                       maxLength="2000"
-                      placeholder="输入集合地点、行程安排或想确认的问题…"
+                      placeholder={t(
+                        "输入集合地点、行程安排或想确认的问题…",
+                        "만날 장소, 일정, 확인하고 싶은 내용을 입력하세요…",
+                      )}
                       required
                     />
                     <div className="compose-bottom">
                       <small>
-                        {draft.length}/2000 · 仅本次预约双方可发送消息
+                        {draft.length}/2000 ·{" "}
+                        {t(
+                          "仅本次预约双方可发送消息",
+                          "이번 예약의 당사자만 메시지를 보낼 수 있습니다",
+                        )}
                       </small>
                       <button
                         className="button"
                         disabled={sending || !draft.trim() || !!failedSend}
                       >
                         <Send size={16} />
-                        {sending ? "发送中…" : "发送消息"}
+                        {sending
+                          ? t("发送中…", "보내는 중…")
+                          : t("发送消息", "메시지 보내기")}
                       </button>
                     </div>
                   </form>
                 ) : (
                   <p className="notice">
-                    预约已关闭或尚未加载，此会话暂为只读。历史消息仍会保留。
+                    {t(
+                      "预约已关闭或尚未加载，此会话暂为只读。历史消息仍会保留。",
+                      "예약이 종료되었거나 아직 불러오지 않아 읽기 전용입니다. 지난 메시지는 그대로 보관됩니다.",
+                    )}
                   </p>
                 )}
                 <small className="muted">
-                  有售后问题时，授权客服可在记录调阅原因后查看相关沟通；财务不能查看聊天内容。
+                  {t(
+                    "有售后问题时，授权客服可在记录调阅原因后查看相关沟通；财务不能查看聊天内容。",
+                    "분쟁이 있을 때에 한해, 권한이 있는 고객지원이 열람 사유를 기록한 뒤 대화를 확인할 수 있습니다. 재무 담당자는 대화를 볼 수 없습니다.",
+                  )}
                 </small>
               </div>
             </>

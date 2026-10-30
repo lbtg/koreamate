@@ -416,7 +416,7 @@ function App() {
           }}
         />
       )}
-      <ConnectionNotice />
+      <ConnectionNotice t={t} />
       {session?.preview && (
         <div className="showcase-bar">
           <strong>
@@ -614,6 +614,7 @@ function App() {
             <PaymentHandoff
               failed={route === "/payments/fail"}
               navigate={navigate}
+              t={t}
             />
           ) : LEGAL[route] ? (
             <LegalPage route={route} navigate={navigate} />
