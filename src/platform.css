@@ -2110,3 +2110,35 @@ td .text-button {
     padding: 22px 18px;
   }
 }
+
+/* The service pledge is what keeps the platform outside Korea's travel-business
+   rules, so it reads as a notice rather than another form field. */
+.pledge {
+  margin: 20px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.025);
+}
+.pledge b {
+  display: block;
+  margin-bottom: 10px;
+}
+.pledge ul {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+.pledge li {
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+.pledge label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.pledge input {
+  margin-top: 4px;
+  flex: none;
+}

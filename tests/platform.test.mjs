@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createApp } from "../server/app.mjs";
+import { createApp, purposes } from "../server/app.mjs";
 let app, base, dir, admin, guide, guest, other, reviewer, gid, bid;
 const date = new Date(Date.now() + 5 * 86400000 + 32400000)
   .toISOString()
@@ -88,7 +88,8 @@ const profile = {
   languages: "한국어, 中文",
   chineseLevel: "fluent",
   style: "professional",
-  rate: 35000,
+  rate: 350,
+  pledge: true,
   capacity: 4,
   image: "",
 };
@@ -140,7 +141,7 @@ test("guide application approval and complete slot matching across separate acco
   await guide("/guide/availability", "POST", { date, start: 540, end: 1080 });
   let found = await guest(search());
   assert.equal(found.length, 1);
-  assert.equal(found[0].total, 105000);
+  assert.equal(found[0].total, 1050);
   assert.equal((await guest(search({ adults: 5 }))).length, 0);
   assert.equal(
     (await guest(search({ purposes: "shopping,concert" }))).length,
@@ -151,7 +152,7 @@ test("guide application approval and complete slot matching across separate acco
     1,
   );
   assert.equal((await guest(search({ time: "17:00" }))).length, 0);
-  assert.equal((await guest(search({ budget: 100000 }))).length, 0);
+  assert.equal((await guest(search({ budget: 1000 }))).length, 0);
   assert.equal((await guest("/guides/" + gid)).id, gid);
   await guide("/guide/availability", "POST", {
     date,
@@ -201,8 +202,8 @@ test("payment reconciliation is authorized, idempotent and separate from status;
   assert.equal(b.status, "confirmed");
   assert.equal(b.payment_status, "paid");
   assert.equal(b.ledger.length, 1);
-  await guide("/guide/profile", "POST", { ...profile, rate: 50000 });
-  assert.equal((await guest("/bookings/" + bid)).total, 105000);
+  await guide("/guide/profile", "POST", { ...profile, rate: 500 });
+  assert.equal((await guest("/bookings/" + bid)).total, 1050);
   await admin("/admin/guide", "POST", {
     id: gid,
     status: "approved",
@@ -281,14 +282,14 @@ test("service start time, guest completion, review ownership, dispute holds and 
     400,
   );
   await admin("/bookings/" + bid + "/refund", "POST", {
-    amount: 10000,
+    amount: 100,
     reference: "refund-1",
     reason: "Agreed partial refund",
   });
   await admin(
     "/bookings/" + bid + "/refund",
     "POST",
-    { amount: 100000, reference: "refund-2", reason: "Excess" },
+    { amount: 1000, reference: "refund-2", reason: "Excess" },
     400,
   );
   let cases = await admin("/admin/cases");
@@ -305,8 +306,8 @@ test("service start time, guest completion, review ownership, dispute holds and 
   });
   const b = await guest("/bookings/" + bid);
   assert.equal(b.settlement_status, "paid");
-  assert.equal(b.refund, 10000);
-  assert.equal(b.ledger.find((l) => l.kind === "settlement").amount, 76000);
+  assert.equal(b.refund, 100);
+  assert.equal(b.ledger.find((l) => l.kind === "settlement").amount, 760);
 });
 test("expired locks release capacity and late payments cannot confirm a closed booking", async () => {
   const b = (
@@ -325,7 +326,7 @@ test("expired locks release capacity and late payments cannot confirm a closed b
   assert.equal((await guest("/bookings/" + b)).status, "expired");
   assert.equal((await guest(search({ hours: 1 }))).length, 1);
 });
-test("review moderation and four-purpose statistics persist", async () => {
+test("review moderation and per-purpose statistics persist", async () => {
   let rs = await admin("/admin/reviews");
   await admin("/admin/review", "POST", {
     id: rs[0].id,
@@ -333,7 +334,7 @@ test("review moderation and four-purpose statistics persist", async () => {
     reason: "Under appeal",
   });
   assert.equal((await guest("/guides/" + gid)).reviewCount, 0);
-  assert.equal((await admin("/admin/stats")).purposes.length, 4);
+  assert.equal((await admin("/admin/stats")).purposes.length, purposes.length);
   assert.ok(
     (await admin("/admin/audit")).some((a) => a.action === "payment.confirmed"),
   );

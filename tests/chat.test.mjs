@@ -68,7 +68,8 @@ async function setup(t) {
     languages: "中文",
     chineseLevel: "fluent",
     style: "friendly",
-    rate: 35000,
+    rate: 350,
+    pledge: true,
     capacity: 4,
   });
   const g = await guide("/guide/profile");

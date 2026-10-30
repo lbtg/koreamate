@@ -13,7 +13,14 @@ import { mkdirSync, existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const purposes = ["shopping", "business", "medical", "concert"];
+export const purposes = [
+  "shopping",
+  "errands",
+  "business",
+  "medical",
+  "beauty",
+  "concert",
+];
 const cities = ["seoul", "busan", "incheon", "jeju"];
 const now = () => Date.now(),
   id = () => randomUUID();
@@ -534,6 +541,8 @@ export function createApp({
           fail("请选择中文水平及服务风格");
         let image = clean(data.image, 1000);
         if (image && !/^https:\/\//.test(image)) fail("图片须使用HTTPS地址");
+        if (data.pledge !== true)
+          fail("请先确认《随行翻译服务守则》后再提交资料");
         const gid = g?.id || id();
         run(
           `INSERT INTO guides(id,user_id,city,purposes,bio,languages,chinese_level,style,rate,capacity,image,status,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',?) ON CONFLICT(user_id) DO UPDATE SET city=excluded.city,purposes=excluded.purposes,bio=excluded.bio,languages=excluded.languages,chinese_level=excluded.chinese_level,style=excluded.style,rate=excluded.rate,capacity=excluded.capacity,image=excluded.image,status='pending',review_note=''`,
@@ -545,13 +554,14 @@ export function createApp({
           clean(data.languages, 100),
           data.chineseLevel,
           data.style,
-          integer(data.rate, 10000, 1000000),
+          integer(data.rate, 50, 5000),
           integer(data.capacity, 1, 12),
           image,
           now(),
         );
         admins("有随行翻译资料等待审核");
         log(u, "guide.submitted", gid);
+        log(u, "guide.pledge.accepted", gid);
         return { ok: true };
       }
     }

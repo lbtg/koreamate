@@ -22,6 +22,8 @@ import {
   HeartHandshake,
   BriefcaseBusiness,
   Stethoscope,
+  ShoppingBag,
+  Sparkles,
   Music2,
   Wallet,
   ClipboardList,
@@ -47,9 +49,11 @@ import {
 } from "./mobile-runtime.js";
 const purposes = {
   shopping: ["购物陪同", "쇼핑 동행"],
-  business: ["商业", "비즈니스"],
-  medical: ["医疗", "의료 동행"],
-  concert: ["演唱会", "콘서트"],
+  errands: ["行政手续", "행정·생활 동행"],
+  business: ["商务口译", "비즈니스 통역"],
+  medical: ["就医陪同", "의료 동행"],
+  beauty: ["医美陪同", "미용·성형 동행"],
+  concert: ["活动陪同", "행사 동행"],
 };
 const cities = {
   seoul: ["首尔", "서울"],
@@ -644,9 +648,11 @@ function App() {
 }
 function PurposePicker({ value, onChange, t }) {
   const icons = {
-    shopping: HeartHandshake,
+    shopping: ShoppingBag,
+    errands: ClipboardList,
     business: BriefcaseBusiness,
     medical: Stethoscope,
+    beauty: Sparkles,
     concert: Music2,
   };
   return (
@@ -736,7 +742,10 @@ function SearchFields({ search, setSearch, t, labels }) {
         </Field>
       </div>
       <p className="label">
-        {t("出行目的 · 可多选，需全部满足", "목적 · 복수 선택, 모두 충족")}
+        {t(
+          "服务场景 · 可多选，需全部满足",
+          "서비스 상황 · 복수 선택, 모두 충족",
+        )}
       </p>
       <PurposePicker
         value={search.purposes}
@@ -787,7 +796,7 @@ function Home(ctx) {
   async function find(e) {
     e.preventDefault();
     if (!search.purposes.length) {
-      setError("请选择至少一种出行目的");
+      setError("请选择至少一种服务场景");
       return;
     }
     setLoading(true);
@@ -887,7 +896,7 @@ function Home(ctx) {
                 {t(
                   session.preview
                     ? "以下为筛选效果演示；日期和时段不代表真实可预约档期。"
-                    : "已核对完整时段、接待人数和所选出行目的。",
+                    : "已核对完整时段、陪同人数和所选服务场景。",
                   "시간, 인원, 선택 목적을 모두 확인했습니다.",
                 )}
               </p>
@@ -1143,8 +1152,8 @@ function Auth({
           <span className="eyebrow light">PEOPLE MAKE THE PLACE</span>
           <h1>
             {t(
-              "好旅程，\n从认识一个人开始。",
-              "좋은 여행은,\n한 사람을 만나는 데서.",
+              "好沟通，\n从认识一个人开始。",
+              "좋은 소통은,\n한 사람을 만나는 데서.",
             )}
           </h1>
         </div>
@@ -1170,8 +1179,8 @@ function Auth({
           {t(
             adminPortal
               ? "仅限平台授权人员。管理账户由平台创建，不开放公众注册。"
-              : "登录后管理你的预约、行程和消息。",
-            "여행자와 메이트는 개별 계정으로 이용합니다.",
+              : "登录后管理你的预约、时段和消息。",
+            "이용자와 메이트는 개별 계정으로 이용합니다.",
           )}
         </p>
         <form onSubmit={submit}>
@@ -2283,6 +2292,7 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
         onSubmit({
           ...Object.fromEntries(new FormData(e.currentTarget)),
           purposes: ps,
+          pledge: true,
         });
       }}
     >
@@ -2334,9 +2344,9 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
           <input
             name="rate"
             type="number"
-            min="10000"
-            max="1000000"
-            defaultValue={p?.rate || 35000}
+            min="50"
+            max="5000"
+            defaultValue={p?.rate || 300}
             required
           />
         </Field>
@@ -2351,7 +2361,7 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
           />
         </Field>
       </div>
-      <p className="label">{t("可承接的出行目的", "가능 서비스 목적")}</p>
+      <p className="label">{t("可承接的服务场景", "가능 서비스 상황")}</p>
       <PurposePicker value={ps} onChange={setPs} t={t} />
       <Field label={t("自我介绍及具体服务范围", "소개 및 구체적 서비스 범위")}>
         <textarea
@@ -2380,6 +2390,44 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
           "신원과 서비스 능력은 면접으로 확인합니다. 공개 소개에 신분증·계좌 정보를 입력하지 마세요.",
         )}
       </p>
+      <div className="pledge">
+        <b>{t("随行翻译服务守则", "통역 동행 서비스 수칙")}</b>
+        <ul>
+          <li>
+            {t(
+              "我只提供语言翻译与随行陪同，不提供旅游景点的导览与讲解。",
+              "저는 통역과 동행만 제공하며, 관광지 안내·해설은 하지 않습니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "我不为客人策划行程，也不代订机票、车票、酒店或包车。",
+              "고객의 여행 일정을 계획하거나 항공권·승차권·숙박·차량을 대리 예약하지 않습니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "我不向客人推荐医疗或医美机构，也不从任何机构收取介绍费或佣金。",
+              "의료·미용 기관을 추천하지 않으며, 어떤 기관으로부터도 소개비나 수수료를 받지 않습니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "我不在服务中推销商品、索要小费或诱导额外消费。",
+              "서비스 중 상품 판매, 팁 요구, 추가 소비 유도를 하지 않습니다.",
+            )}
+          </li>
+        </ul>
+        <label>
+          <input type="checkbox" required />
+          <span>
+            {t(
+              "我已阅读并承诺遵守上述守则，违反将被终止接单资格。",
+              "위 수칙을 읽었으며 준수할 것을 약속합니다. 위반 시 예약 수락 자격이 중단됩니다.",
+            )}
+          </span>
+        </label>
+      </div>
       <Button type="submit" disabled={busy || !ps.length}>
         {t("提交资料审核", "심사 신청")}
       </Button>
@@ -2678,7 +2726,7 @@ function AdminStats({ revision }) {
             <Metric label="累计登记退款" value={money(s.refunded)} />
           </div>
           <div className="panel table-wrap">
-            <h3>四类出行目的</h3>
+            <h3>各服务场景分布</h3>
             <p className="small muted">
               多选目的分别计数，合计可能大于订单总数。
             </p>

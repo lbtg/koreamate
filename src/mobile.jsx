@@ -166,7 +166,7 @@ export function AccountPage({ user, navigate, logout, t }) {
       </div>
       <InstallCard />
       <p className="small muted">
-        购物 · 商业 · 医疗 · 演唱会
+        购物 · 手续 · 商务 · 就医 · 医美 · 活动
         <br />
         服务时间均为韩国时间（UTC+9）。
       </p>
