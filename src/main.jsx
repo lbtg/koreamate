@@ -126,23 +126,34 @@ const statusLabels = {
   resolved: ["已处理", "처리 완료"],
 };
 const payLabels = {
-  unpaid: "未付款",
-  paid: "已核实到账",
-  partially_refunded: "部分退款",
-  refunded: "已全额退款",
+  unpaid: ["未付款", "미결제"],
+  paid: ["已核实到账", "입금 확인"],
+  partially_refunded: ["部分退款", "부분 환불"],
+  refunded: ["已全额退款", "전액 환불"],
 };
 const settleLabels = {
-  not_eligible: "未进入结算",
-  pending: "待结算",
-  paid: "已登记结算",
+  not_eligible: ["未进入结算", "정산 대상 아님"],
+  pending: ["待结算", "정산 대기"],
+  paid: ["已登记结算", "정산 등록됨"],
 };
 const roles = {
-  guest: "游客",
-  guide: "随行翻译",
-  admin: "管理员",
-  support: "客服",
-  finance: "财务",
-  reviewer: "审核人员",
+  guest: ["游客", "이용자"],
+  guide: ["随行翻译", "통역사"],
+  admin: ["管理员", "관리자"],
+  support: ["客服", "고객지원"],
+  finance: ["财务", "재무"],
+  reviewer: ["审核人员", "심사 담당"],
+};
+// Each map holds a pair; an unknown key still has to read as something.
+const pick = (map, key, t) => (map[key] ? t(...map[key]) : key);
+// Components get t() as a prop; module-level helpers read the stored choice instead.
+// The two agree because App writes km-language whenever the reader switches.
+const tr = (zh, ko) => {
+  try {
+    return localStorage.getItem("km-language") === "ko" ? ko || zh : zh;
+  } catch {
+    return zh;
+  }
 };
 const money = (n) => "¥" + Number(n || 0).toLocaleString("zh-CN");
 const kst = (n) =>
@@ -176,7 +187,12 @@ async function api(path, method = "GET", body) {
   try {
     data = await r.json();
   } catch {
-    throw Error("服务连接失败，请稍后重试");
+    throw Error(
+      tr(
+        "服务连接失败，请稍后重试",
+        "서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요",
+      ),
+    );
   }
   if (
     import.meta.env.MODE === "showcase" &&
@@ -186,7 +202,7 @@ async function api(path, method = "GET", body) {
     previewConnection = true;
     return (await import("./showcase.js")).showcaseApi(path, method, body);
   }
-  if (!r.ok) throw Error(data.error || "请求失败");
+  if (!r.ok) throw Error(data.error || tr("请求失败", "요청에 실패했습니다"));
   if (path === "/session") previewConnection = false;
   return data;
 }
@@ -243,7 +259,8 @@ function Select({ options, value, onChange, ...props }) {
   );
 }
 function State({ loading, error, empty = false, children }) {
-  if (loading) return <div className="empty">正在加载…</div>;
+  if (loading)
+    return <div className="empty">{tr("正在加载…", "불러오는 중…")}</div>;
   if (error)
     return (
       <div className="notice error" role="alert">
@@ -254,8 +271,13 @@ function State({ loading, error, empty = false, children }) {
     return (
       <div className="empty">
         <Search size={28} />
-        <h3>暂时没有记录</h3>
-        <p>可以调整条件，或稍后再查看。</p>
+        <h3>{tr("暂时没有记录", "아직 기록이 없습니다")}</h3>
+        <p>
+          {tr(
+            "可以调整条件，或稍后再查看。",
+            "조건을 바꾸거나 잠시 후 다시 확인해 보세요.",
+          )}
+        </p>
       </div>
     );
   return children;
@@ -427,7 +449,7 @@ function App() {
       {adminZone ? (
         <header className="admin-header">
           <button className="brand" onClick={() => navigate("/admin")}>
-            Korea<span>Mate</span> <small>运营管理</small>
+            Korea<span>Mate</span> <small>{t("运营管理", "운영 관리")}</small>
           </button>
           <div>
             {staff && (
@@ -503,7 +525,7 @@ function App() {
                 <>
                   <button
                     className="icon-btn"
-                    aria-label="通知"
+                    aria-label={t("通知", "알림")}
                     onClick={() => {
                       setNotice(!notice);
                       api("/notifications", "POST", {})
@@ -522,7 +544,7 @@ function App() {
                   </button>
                   <button
                     className="icon-btn"
-                    aria-label="退出"
+                    aria-label={t("退出", "로그아웃")}
                     onClick={logout}
                   >
                     <LogOut size={17} />
@@ -535,7 +557,7 @@ function App() {
               )}
               <button
                 className="hamburger icon-btn"
-                aria-label="菜单"
+                aria-label={t("菜单", "메뉴")}
                 onClick={() => setMobile(!mobile)}
               >
                 {mobile ? <X /> : <Menu />}
@@ -550,14 +572,14 @@ function App() {
             <h3>{t("通知", "알림")}</h3>
             <button
               className="icon-btn"
-              aria-label="关闭通知"
+              aria-label={t("关闭通知", "알림 닫기")}
               onClick={() => setNotice(false)}
             >
               <X size={18} />
             </button>
           </div>
           {!notifications.length ? (
-            <p>暂无通知</p>
+            <p>{t("暂无通知", "알림이 없습니다")}</p>
           ) : (
             notifications.map((n) => (
               <button
@@ -575,11 +597,14 @@ function App() {
         </aside>
       )}
       {!ready ? (
-        <div className="empty">正在连接平台…</div>
+        <div className="empty">
+          {t("正在连接平台…", "플랫폼에 연결하는 중…")}
+        </div>
       ) : sessionError ? (
         <div className="page">
           <div className="notice error">
-            {sessionError} <button onClick={reloadSession}>重试</button>
+            {sessionError}{" "}
+            <button onClick={reloadSession}>{t("重试", "다시 시도")}</button>
           </div>
         </div>
       ) : (
@@ -644,7 +669,9 @@ function App() {
           ) : (
             <div className="empty">
               页面不存在或没有访问权限
-              <Button onClick={() => navigate("/")}>返回首页</Button>
+              <Button onClick={() => navigate("/")}>
+                {t("返回首页", "홈으로")}
+              </Button>
             </div>
           )}
         </main>
@@ -868,7 +895,9 @@ function Home(ctx) {
   async function find(e) {
     e.preventDefault();
     if (!search.purposes.length) {
-      setError("请选择至少一种服务场景");
+      setError(
+        t("请选择至少一种服务场景", "서비스 상황을 하나 이상 선택해 주세요"),
+      );
       return;
     }
     setLoading(true);
@@ -968,12 +997,15 @@ function Home(ctx) {
                   <span className="count">{results.length}</span>
                 </h2>
                 <p>
-                  {t(
-                    session.preview
-                      ? "以下为筛选效果演示；日期和时段不代表真实可预约档期。"
-                      : "已核对完整时段、陪同人数和所选服务场景。",
-                    "시간, 인원, 선택 목적을 모두 확인했습니다.",
-                  )}
+                  {session.preview
+                    ? t(
+                        "以下为筛选效果演示；日期和时段不代表真实可预约档期。",
+                        "아래는 검색 예시이며, 날짜와 시간은 실제 예약 가능 일정이 아닙니다.",
+                      )
+                    : t(
+                        "已核对完整时段、陪同人数和所选服务场景。",
+                        "전체 시간, 동행 인원, 선택한 서비스 상황을 확인했습니다.",
+                      )}
                 </p>
               </div>
               <Select
@@ -1014,7 +1046,9 @@ function Home(ctx) {
                       )}
                       <span className="portrait-tag">
                         <ShieldCheck size={14} />
-                        {g.isDemo ? "演示资料" : t("平台已审核", "심사 완료")}
+                        {g.isDemo
+                          ? t("演示资料", "예시 프로필")
+                          : t("平台已审核", "심사 완료")}
                       </span>
                     </div>
                     <div className="guide-body">
@@ -1227,11 +1261,16 @@ function Auth({
       <div className="page empty">
         {adminPortal &&
         !["admin", "support", "finance", "reviewer"].includes(user.role)
-          ? "此账户没有管理权限，请退出后使用管理账户登录。"
+          ? t(
+              "此账户没有管理权限，请退出后使用管理账户登录。",
+              "이 계정에는 관리 권한이 없습니다. 로그아웃 후 관리자 계정으로 로그인해 주세요.",
+            )
           : t("你已经登录", "이미 로그인했습니다")}
-        <Button onClick={() => navigate(landing(user.role))}>进入工作区</Button>
+        <Button onClick={() => navigate(landing(user.role))}>
+          {t("进入工作区", "작업 공간으로")}
+        </Button>
         <Button secondary onClick={logout}>
-          退出当前账户
+          {t("退出当前账户", "현재 계정 로그아웃")}
         </Button>
       </div>
     );
@@ -1281,24 +1320,25 @@ function Auth({
         </span>
         <h2>
           {adminPortal
-            ? "管理账户登录"
+            ? t("管理账户登录", "관리자 로그인")
             : register
-              ? t(
-                  portal === "guide" ? "申请成为随行翻译" : "创建游客账户",
-                  "계정 만들기",
-                )
-              : t(
-                  portal === "guide" ? "随行翻译登录" : "游客登录",
-                  "다시 만나 반가워요",
-                )}
+              ? portal === "guide"
+                ? t("申请成为随行翻译", "통역사 지원하기")
+                : t("创建游客账户", "이용자 계정 만들기")
+              : portal === "guide"
+                ? t("随行翻译登录", "통역사 로그인")
+                : t("游客登录", "이용자 로그인")}
         </h2>
         <p>
-          {t(
-            adminPortal
-              ? "仅限平台授权人员。管理账户由平台创建，不开放公众注册。"
-              : "登录后管理你的预约、时段和消息。",
-            "이용자와 메이트는 개별 계정으로 이용합니다.",
-          )}
+          {adminPortal
+            ? t(
+                "仅限平台授权人员。管理账户由平台创建，不开放公众注册。",
+                "플랫폼 승인 담당자 전용입니다. 관리자 계정은 플랫폼이 생성하며 일반 가입은 받지 않습니다.",
+              )
+            : t(
+                "登录后管理你的预约、时段和消息。",
+                "로그인하면 예약, 일정, 메시지를 관리할 수 있습니다.",
+              )}
         </p>
         <form onSubmit={submit}>
           {register && (
@@ -1404,7 +1444,9 @@ function GuideDetail(ctx) {
                   </p>
                   <span className="verified">
                     <ShieldCheck size={16} />
-                    {g.isDemo ? "演示资料" : t("入驻审核通过", "심사 완료")}
+                    {g.isDemo
+                      ? t("演示资料", "예시 프로필")
+                      : t("入驻审核通过", "심사 완료")}
                   </span>
                 </div>
               </div>
@@ -1419,19 +1461,19 @@ function GuideDetail(ctx) {
               </div>
               <div className="facts">
                 <div>
-                  <small>中文水平</small>
+                  <small>{t("中文水平", "중국어 수준")}</small>
                   <strong>{labels(levels)[g.chineseLevel]}</strong>
                 </div>
                 <div>
-                  <small>服务风格</small>
+                  <small>{t("服务风格", "서비스 스타일")}</small>
                   <strong>{labels(styles)[g.style]}</strong>
                 </div>
                 <div>
-                  <small>最多接待</small>
+                  <small>{t("最多接待", "최대 인원")}</small>
                   <strong>{g.capacity}人</strong>
                 </div>
                 <div>
-                  <small>每小时价格</small>
+                  <small>{t("每小时价格", "시간당 가격")}</small>
                   <strong>{money(g.rate)}</strong>
                 </div>
               </div>
@@ -1661,32 +1703,40 @@ function OrderDetail(ctx) {
           <div className="panel">
             <div className="facts">
               <div>
-                <small>游客</small>
+                <small>{t("游客", "이용자")}</small>
                 <strong>{b.guestName}</strong>
               </div>
               <div>
-                <small>人数</small>
+                <small>{t("人数", "인원")}</small>
                 <strong>
                   {b.adults}成人 / {b.children}儿童
                 </strong>
               </div>
               <div>
-                <small>目的</small>
+                <small>{t("目的", "상황")}</small>
                 <strong>
                   {b.purposes.map((p) => purposes[p][0]).join(" / ")}
                 </strong>
               </div>
               <div>
-                <small>集合地点</small>
-                <strong>{b.meeting || "请在订单消息中确认"}</strong>
+                <small>{t("集合地点", "만날 장소")}</small>
+                <strong>
+                  {b.meeting ||
+                    t("请在订单消息中确认", "예약 대화에서 확인해 주세요")}
+                </strong>
               </div>
             </div>
-            <h3>特别要求</h3>
-            <p className="prose">{b.note || "无特别要求"}</p>
+            <h3>{t("特别要求", "요청 사항")}</h3>
+            <p className="prose">
+              {b.note || t("无特别要求", "요청 사항 없음")}
+            </p>
             {b.expires &&
               ["requested", "awaiting_payment"].includes(b.status) && (
                 <div className="notice">
-                  {b.status === "requested" ? "随行翻译响应" : "付款"}截止时间：
+                  {b.status === "requested"
+                    ? t("随行翻译响应", "통역사 응답")
+                    : t("付款", "결제")}
+                  {t("截止时间：", " 마감 시각: ")}
                   {kst(b.expires)}。超时后自动关闭。
                 </div>
               )}
@@ -1700,7 +1750,12 @@ function OrderDetail(ctx) {
                     secondary
                     disabled={busy}
                     onClick={() =>
-                      act("reject", { reason: "随行翻译无法承接" })
+                      act("reject", {
+                        reason: t(
+                          "随行翻译无法承接",
+                          "통역사가 수락할 수 없음",
+                        ),
+                      })
                     }
                   >
                     {t("拒绝", "거절")}
@@ -1730,7 +1785,7 @@ function OrderDetail(ctx) {
               b.status,
             ) && (
               <details className="action-detail">
-                <summary>取消预约</summary>
+                <summary>{t("取消预约", "예약 취소")}</summary>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1975,7 +2030,7 @@ function OrderDetail(ctx) {
             </div>
             <div className="summary-line">
               <span>付款状态</span>
-              <b>{payLabels[b.payment_status]}</b>
+              <b>{pick(payLabels, b.payment_status, t)}</b>
             </div>
             <div className="summary-line">
               <span>已登记退款</span>
@@ -1993,7 +2048,7 @@ function OrderDetail(ctx) {
                 </div>
                 <div className="summary-line">
                   <span>结算状态</span>
-                  <b>{settleLabels[b.settlement_status]}</b>
+                  <b>{pick(settleLabels, b.settlement_status, t)}</b>
                 </div>
               </>
             )}
@@ -2648,7 +2703,7 @@ function Availability({ t, revision, save, busy }) {
   );
 }
 function Income(ctx) {
-  const { revision } = ctx,
+  const { revision, t } = ctx,
     { data, loading, error } = useLoad("/bookings", revision);
   const paid = data?.filter((b) => b.payment_status !== "unpaid") || [],
     amount = (b) =>
@@ -2706,7 +2761,7 @@ function Income(ctx) {
                 <td>{money(b.commission)}</td>
                 <td>{money(b.refund)}</td>
                 <td>{money(amount(b))}</td>
-                <td>{settleLabels[b.settlement_status]}</td>
+                <td>{pick(settleLabels, b.settlement_status, t)}</td>
               </tr>
             ))}
           </tbody>
@@ -2776,7 +2831,7 @@ function Admin(ctx) {
         <span className="eyebrow">KOREAMATE OPERATIONS</span>
         <h2>运营工作台</h2>
         <span className="role-label">
-          {roles[user.role]} · {user.name}
+          {pick(roles, user.role, t)} · {user.name}
         </span>
         <nav>
           {allowed.map((k) => (
@@ -3145,7 +3200,7 @@ function AdminSettings({ session, save, busy }) {
     </form>
   );
 }
-function AdminUsers({ revision, save, busy, user }) {
+function AdminUsers({ revision, save, busy, user, t }) {
   const { data, loading, error } = useLoad("/admin/users", revision);
   return (
     <State loading={loading} error={error}>
@@ -3164,7 +3219,7 @@ function AdminUsers({ revision, save, busy, user }) {
               <tr key={u.id}>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
-                <td>{roles[u.role]}</td>
+                <td>{pick(roles, u.role, t)}</td>
                 <td>
                   {u.id === user.id ? (
                     "当前账户"
