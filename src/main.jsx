@@ -1792,7 +1792,7 @@ function OrderDetail(ctx) {
                     act("cancel", formData(e));
                   }}
                 >
-                  <Field label="取消原因">
+                  <Field label={t("取消原因", "취소 사유")}>
                     <input name="reason" required />
                   </Field>
                   <p className="small muted">
@@ -1806,13 +1806,19 @@ function OrderDetail(ctx) {
             )}
             {isGuest && b.status === "awaiting_payment" && (
               <div className="section-block">
-                <h3>付款安排</h3>
+                <h3>{t("付款安排", "결제 안내")}</h3>
                 {session.payments?.enabled ? (
                   <div className="panel">
                     <p>
                       {session.payments.mode === "test"
-                        ? "支付测试环境：不会真实扣款。"
-                        : "前往支付机构的安全收银台付款。"}
+                        ? t(
+                            "支付测试环境：不会真实扣款。",
+                            "결제 테스트 환경입니다. 실제로 결제되지 않습니다.",
+                          )
+                        : t(
+                            "前往支付机构的安全收银台付款。",
+                            "결제사의 보안 결제창으로 이동합니다.",
+                          )}
                     </p>
                     <p>应付 {money(b.total)} · 金额以订单为准</p>
                     {["confirming", "unknown"].includes(
@@ -1852,16 +1858,18 @@ function OrderDetail(ctx) {
                         act("payment-report", formData(e));
                       }}
                     >
-                      <Field label="实际转账参考号">
+                      <Field label={t("实际转账参考号", "실제 송금 참조번호")}>
                         <input name="reference" required />
                       </Field>
-                      <Field label="补充凭证说明">
+                      <Field label={t("补充凭证说明", "추가 증빙 설명")}>
                         <textarea name="evidence" />
                       </Field>
                       <p className="small muted">
                         提交凭证不会自动确认付款，请及时联系平台在截止时间前核对。
                       </p>
-                      <Button disabled={busy}>提交到账核对</Button>
+                      <Button disabled={busy}>
+                        {t("提交到账核对", "입금 확인 요청")}
+                      </Button>
                     </form>
                   </>
                 )}
@@ -1871,15 +1879,21 @@ function OrderDetail(ctx) {
               .filter((c) => c.status === "pending")
               .map((c) => (
                 <div className="notice" key={c.id}>
-                  <b>改期方案</b>
+                  <b>{t("改期方案", "일정 변경 제안")}</b>
                   <p>
                     {kst(c.start)} — {kst(c.end)} ·{" "}
-                    {c.meeting || "集合地点另议"}
+                    {c.meeting || t("集合地点另议", "만날 장소 추후 협의")}
                   </p>
                   <p>{c.reason}</p>
                   <p>
-                    游客：{c.guest_ok ? "已同意" : "待确认"} / 随行翻译：
-                    {c.guide_ok ? "已同意" : "待确认"}
+                    {t("游客", "이용자")}：
+                    {c.guest_ok
+                      ? t("已同意", "동의함")
+                      : t("待确认", "확인 대기")}{" "}
+                    / {t("随行翻译", "통역사")}：
+                    {c.guide_ok
+                      ? t("已同意", "동의함")
+                      : t("待确认", "확인 대기")}
                   </p>
                   {(isGuest || isGuide) && (
                     <div className="actions">
@@ -1920,21 +1934,27 @@ function OrderDetail(ctx) {
                   );
                 }}
               >
-                <h3>提交售后申请</h3>
-                <Field label="类型">
+                <h3>{t("提交售后申请", "분쟁 접수")}</h3>
+                <Field label={t("类型", "유형")}>
                   <select name="kind">
-                    <option value="complaint">投诉或服务问题</option>
-                    <option value="refund">退款申请</option>
-                    <option value="review_appeal">评价申诉</option>
+                    <option value="complaint">
+                      {t("投诉或服务问题", "불만 또는 서비스 문제")}
+                    </option>
+                    <option value="refund">{t("退款申请", "환불 신청")}</option>
+                    <option value="review_appeal">
+                      {t("评价申诉", "후기 이의 신청")}
+                    </option>
                   </select>
                 </Field>
-                <Field label="问题说明">
+                <Field label={t("问题说明", "문제 설명")}>
                   <textarea name="body" required />
                 </Field>
-                <Field label="证据说明或链接">
+                <Field label={t("证据说明或链接", "증빙 설명 또는 링크")}>
                   <textarea name="evidence" />
                 </Field>
-                <Button disabled={busy}>提交平台处理</Button>
+                <Button disabled={busy}>
+                  {t("提交平台处理", "플랫폼에 접수")}
+                </Button>
               </form>
             )}
             {isGuest && b.status === "completed" && !b.review && (
@@ -1945,8 +1965,8 @@ function OrderDetail(ctx) {
                   act("review", formData(e));
                 }}
               >
-                <h3>评价这次同行</h3>
-                <Field label="评分">
+                <h3>{t("评价这次同行", "이번 동행 후기")}</h3>
+                <Field label={t("评分", "평점")}>
                   <select name="rating">
                     {[5, 4, 3, 2, 1].map((n) => (
                       <option key={n} value={n}>
@@ -1955,15 +1975,15 @@ function OrderDetail(ctx) {
                     ))}
                   </select>
                 </Field>
-                <Field label="体验评价">
+                <Field label={t("体验评价", "이용 후기")}>
                   <textarea name="body" required />
                 </Field>
-                <Button disabled={busy}>发布评价</Button>
+                <Button disabled={busy}>{t("发布评价", "후기 등록")}</Button>
               </form>
             )}
             {b.review && (
               <div className="section-block">
-                <h3>订单评价</h3>
+                <h3>{t("订单评价", "예약 후기")}</h3>
                 <p>
                   {"★".repeat(b.review.rating)} · {b.review.body}
                 </p>
@@ -1994,8 +2014,14 @@ function OrderDetail(ctx) {
             ) : (
               <p className="muted">
                 {isGuest || isGuide
-                  ? "随行翻译确认接单后，系统会自动为双方开启独立会话。"
-                  : "聊天不向财务或其他账户开放。客服处理售后时须记录调阅原因。"}
+                  ? t(
+                      "随行翻译确认接单后，系统会自动为双方开启独立会话。",
+                      "통역사가 예약을 수락하면 양측 전용 대화가 자동으로 열립니다.",
+                    )
+                  : t(
+                      "聊天不向财务或其他账户开放。客服处理售后时须记录调阅原因。",
+                      "대화는 재무나 다른 계정에 공개되지 않습니다. 고객지원이 분쟁을 처리할 때에는 열람 사유를 기록해야 합니다.",
+                    )}
               </p>
             )}
           </div>
@@ -2008,7 +2034,7 @@ function OrderDetail(ctx) {
             )}
           {!!b.cases.length && (
             <div className="panel">
-              <h3>售后记录</h3>
+              <h3>{t("售后记录", "분쟁 기록")}</h3>
               {b.cases.map((c) => (
                 <div className="section-block" key={c.id}>
                   <Badge status={c.status} t={t} />
@@ -2023,31 +2049,33 @@ function OrderDetail(ctx) {
         <aside>
           <div className="panel financial">
             <span className="eyebrow">ORDER SUMMARY</span>
-            <h3>费用与进度</h3>
+            <h3>{t("费用与进度", "금액 및 진행")}</h3>
             <div className="total-row">
-              <span>订单服务费</span>
+              <span>{t("订单服务费", "서비스 금액")}</span>
               <strong>{money(b.total)}</strong>
             </div>
             <div className="summary-line">
-              <span>付款状态</span>
+              <span>{t("付款状态", "결제 상태")}</span>
               <b>{pick(payLabels, b.payment_status, t)}</b>
             </div>
             <div className="summary-line">
-              <span>已登记退款</span>
+              <span>{t("已登记退款", "등록된 환불")}</span>
               <b>{money(b.refund)}</b>
             </div>
             {(isGuide || finance) && (
               <>
                 <div className="summary-line">
-                  <span>原订单平台佣金</span>
+                  <span>{t("原订单平台佣金", "원 예약 플랫폼 수수료")}</span>
                   <b>{money(b.commission)}</b>
                 </div>
                 <div className="summary-line">
-                  <span>退款调整后随行翻译应收</span>
+                  <span>
+                    {t("退款调整后随行翻译应收", "환불 반영 후 통역사 수령액")}
+                  </span>
                   <b>{money(net)}</b>
                 </div>
                 <div className="summary-line">
-                  <span>结算状态</span>
+                  <span>{t("结算状态", "정산 상태")}</span>
                   <b>{pick(settleLabels, b.settlement_status, t)}</b>
                 </div>
               </>
@@ -2058,7 +2086,7 @@ function OrderDetail(ctx) {
           </div>
           {finance && (
             <div className="panel">
-              <h3>财务操作</h3>
+              <h3>{t("财务操作", "재무 작업")}</h3>
               <p className="small muted">
                 在线支付订单可通过支付机构原路退款；人工收付款与随行翻译结算仍需登记实际流水。
               </p>
@@ -2066,7 +2094,9 @@ function OrderDetail(ctx) {
                 <div className="section-block">
                   <p>
                     支付渠道：Toss Payments ·{" "}
-                    {b.onlinePayment.mode === "test" ? "测试" : "正式"}
+                    {b.onlinePayment.mode === "test"
+                      ? t("测试", "테스트")
+                      : t("正式", "실결제")}
                   </p>
                   <Button
                     secondary
@@ -2083,7 +2113,9 @@ function OrderDetail(ctx) {
                   {["paid", "partially_refunded"].includes(b.payment_status) &&
                     b.settlement_status !== "paid" && (
                       <details className="action-detail">
-                        <summary>发起原路退款</summary>
+                        <summary>
+                          {t("发起原路退款", "원결제 수단 환불")}
+                        </summary>
                         <form
                           onSubmit={(e) => {
                             e.preventDefault();
@@ -2095,7 +2127,12 @@ function OrderDetail(ctx) {
                             });
                           }}
                         >
-                          <Field label="原路退款金额（韩元）">
+                          <Field
+                            label={t(
+                              "原路退款金额（人民币）",
+                              "원결제 환불 금액 (위안)",
+                            )}
+                          >
                             <input
                               name="amount"
                               type="number"
@@ -2104,7 +2141,7 @@ function OrderDetail(ctx) {
                               required
                             />
                           </Field>
-                          <Field label="退款原因">
+                          <Field label={t("退款原因", "환불 사유")}>
                             <textarea name="reason" required maxLength="200" />
                           </Field>
                           <label className="check-line">
@@ -2134,17 +2171,19 @@ function OrderDetail(ctx) {
                       act("confirm-payment", formData(e));
                     }}
                   >
-                    <Field label="实际收款参考号">
+                    <Field label={t("实际收款参考号", "실제 입금 참조번호")}>
                       <input name="reference" required />
                     </Field>
-                    <Button disabled={busy}>核实到账并确认预约</Button>
+                    <Button disabled={busy}>
+                      {t("核实到账并确认预约", "입금 확인 후 예약 확정")}
+                    </Button>
                   </form>
                 )}
               {!b.onlinePayment &&
                 ["paid", "partially_refunded"].includes(b.payment_status) &&
                 b.settlement_status !== "paid" && (
                   <details className="action-detail">
-                    <summary>登记实际退款</summary>
+                    <summary>{t("登记实际退款", "실제 환불 등록")}</summary>
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -2153,7 +2192,9 @@ function OrderDetail(ctx) {
                         act("refund", d);
                       }}
                     >
-                      <Field label="退款金额（韩元）">
+                      <Field
+                        label={t("退款金额（人民币）", "환불 금액 (위안)")}
+                      >
                         <input
                           name="amount"
                           type="number"
@@ -2162,17 +2203,19 @@ function OrderDetail(ctx) {
                           required
                         />
                       </Field>
-                      <Field label="实际退款参考号">
+                      <Field label={t("实际退款参考号", "실제 환불 참조번호")}>
                         <input name="reference" required />
                       </Field>
-                      <Field label="原因">
+                      <Field label={t("原因", "사유")}>
                         <textarea name="reason" required />
                       </Field>
                       <label className="check-line">
                         <input type="checkbox" name="cancel" />{" "}
                         同时关闭订单并释放档期
                       </label>
-                      <Button disabled={busy}>登记退款</Button>
+                      <Button disabled={busy}>
+                        {t("登记退款", "환불 등록")}
+                      </Button>
                     </form>
                   </details>
                 )}
@@ -2180,7 +2223,9 @@ function OrderDetail(ctx) {
                 b.payment_status !== "unpaid" &&
                 b.settlement_status !== "paid" && (
                   <details className="action-detail">
-                    <summary>登记随行翻译结算</summary>
+                    <summary>
+                      {t("登记随行翻译结算", "통역사 정산 등록")}
+                    </summary>
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -2190,10 +2235,12 @@ function OrderDetail(ctx) {
                       <p>
                         应结算 {money(net)}。售后未解决或未过等待期时无法结算。
                       </p>
-                      <Field label="实际打款参考号">
+                      <Field label={t("实际打款参考号", "실제 송금 참조번호")}>
                         <input name="reference" required />
                       </Field>
-                      <Button disabled={busy}>登记已结算</Button>
+                      <Button disabled={busy}>
+                        {t("登记已结算", "정산 완료 등록")}
+                      </Button>
                     </form>
                   </details>
                 )}
@@ -2201,7 +2248,7 @@ function OrderDetail(ctx) {
           )}
           {operator && ["requested", "confirmed"].includes(b.status) && (
             <div className="panel">
-              <h3>提出改期方案</h3>
+              <h3>{t("提出改期方案", "일정 변경 제안")}</h3>
               <p className="small muted">
                 时长及价格保持不变。双方同意后重新检查档期并生效。
               </p>
@@ -2211,16 +2258,16 @@ function OrderDetail(ctx) {
                   act("propose-change", formData(e));
                 }}
               >
-                <Field label="新日期">
+                <Field label={t("新日期", "새 날짜")}>
                   <input type="date" name="date" min={day(0)} required />
                 </Field>
-                <Field label="开始时间">
+                <Field label={t("开始时间", "시작 시간")}>
                   <input type="time" name="time" required />
                 </Field>
-                <Field label="集合地点">
+                <Field label={t("集合地点", "만날 장소")}>
                   <input name="meeting" />
                 </Field>
-                <Field label="改期原因">
+                <Field label={t("改期原因", "변경 사유")}>
                   <textarea name="reason" required />
                 </Field>
                 <Button disabled={busy}>发送给双方确认</Button>
