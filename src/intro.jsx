@@ -87,7 +87,7 @@ export default function Intro({ onDone, t }) {
       />
       <div className="intro-scrim" />
       <div className="intro-body">
-        <span className="intro-kicker">SEOUL · BUSAN · JEJU · AND 22 MORE</span>
+        <span className="intro-kicker">ACROSS ALL 85 CITIES OF KOREA</span>
         <h1>
           {t(
             "在韩国，\n有人替你开口。",

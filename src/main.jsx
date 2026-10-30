@@ -93,35 +93,210 @@ const purposeIcons = {
   beauty: Sparkles,
   concert: Music2,
 };
-// Ordered roughly by region — capital area, south-east, central, south-west,
-// east coast, Jeju — so a long list still reads as a map rather than an index.
+// Every 시 in South Korea: Seoul, the six metropolitan cities, Sejong and the 77
+// cities under the provinces.
 const cities = {
   seoul: ["首尔", "서울"],
   incheon: ["仁川", "인천"],
   suwon: ["水原", "수원"],
-  seongnam: ["城南", "성남"],
-  yongin: ["龙仁", "용인"],
   goyang: ["高阳", "고양"],
+  yongin: ["龙仁", "용인"],
+  seongnam: ["城南", "성남"],
+  bucheon: ["富川", "부천"],
+  hwaseong: ["华城", "화성"],
+  ansan: ["安山", "안산"],
+  namyangju: ["南杨州", "남양주"],
+  anyang: ["安养", "안양"],
+  pyeongtaek: ["平泽", "평택"],
+  siheung: ["始兴", "시흥"],
+  paju: ["坡州", "파주"],
+  uijeongbu: ["议政府", "의정부"],
+  gimpo: ["金浦", "김포"],
+  gwangju_gyeonggi: ["广州（京畿）", "광주(경기)"],
+  gwangmyeong: ["光明", "광명"],
+  gunpo: ["军浦", "군포"],
+  hanam: ["河南", "하남"],
+  osan: ["乌山", "오산"],
+  yangju: ["杨州", "양주"],
+  icheon: ["利川", "이천"],
+  guri: ["九里", "구리"],
+  anseong: ["安城", "안성"],
+  pocheon: ["抱川", "포천"],
+  uiwang: ["义王", "의왕"],
+  yeoju: ["骊州", "여주"],
+  dongducheon: ["东豆川", "동두천"],
+  gwacheon: ["果川", "과천"],
+  chuncheon: ["春川", "춘천"],
+  wonju: ["原州", "원주"],
+  gangneung: ["江陵", "강릉"],
+  donghae: ["东海", "동해"],
+  taebaek: ["太白", "태백"],
+  sokcho: ["束草", "속초"],
+  samcheok: ["三陟", "삼척"],
+  daejeon: ["大田", "대전"],
+  sejong: ["世宗", "세종"],
+  cheongju: ["清州", "청주"],
+  chungju: ["忠州", "충주"],
+  jecheon: ["堤川", "제천"],
+  cheonan: ["天安", "천안"],
+  gongju: ["公州", "공주"],
+  boryeong: ["保宁", "보령"],
+  asan: ["牙山", "아산"],
+  seosan: ["瑞山", "서산"],
+  nonsan: ["论山", "논산"],
+  gyeryong: ["鸡龙", "계룡"],
+  dangjin: ["唐津", "당진"],
+  gwangju: ["光州", "광주"],
+  jeonju: ["全州", "전주"],
+  gunsan: ["群山", "군산"],
+  iksan: ["益山", "익산"],
+  jeongeup: ["井邑", "정읍"],
+  namwon: ["南原", "남원"],
+  gimje: ["金堤", "김제"],
+  mokpo: ["木浦", "목포"],
+  yeosu: ["丽水", "여수"],
+  suncheon: ["顺天", "순천"],
+  naju: ["罗州", "나주"],
+  gwangyang: ["光阳", "광양"],
   busan: ["釜山", "부산"],
   daegu: ["大邱", "대구"],
   ulsan: ["蔚山", "울산"],
-  changwon: ["昌原", "창원"],
-  gyeongju: ["庆州", "경주"],
   pohang: ["浦项", "포항"],
+  gyeongju: ["庆州", "경주"],
+  gimcheon: ["金泉", "김천"],
   andong: ["安东", "안동"],
-  daejeon: ["大田", "대전"],
-  sejong: ["世宗", "세종"],
-  cheonan: ["天安", "천안"],
-  cheongju: ["清州", "청주"],
-  gwangju: ["光州", "광주"],
-  jeonju: ["全州", "전주"],
-  yeosu: ["丽水", "여수"],
-  gangneung: ["江陵", "강릉"],
-  sokcho: ["束草", "속초"],
-  chuncheon: ["春川", "춘천"],
+  gumi: ["龟尾", "구미"],
+  yeongju: ["荣州", "영주"],
+  yeongcheon: ["永川", "영천"],
+  sangju: ["尚州", "상주"],
+  mungyeong: ["闻庆", "문경"],
+  gyeongsan: ["庆山", "경산"],
+  changwon: ["昌原", "창원"],
+  jinju: ["晋州", "진주"],
+  tongyeong: ["统营", "통영"],
+  sacheon: ["泗川", "사천"],
+  gimhae: ["金海", "김해"],
+  miryang: ["密阳", "밀양"],
+  geoje: ["巨济", "거제"],
+  yangsan: ["梁山", "양산"],
   jeju: ["济州", "제주"],
   seogwipo: ["西归浦", "서귀포"],
 };
+// Province groupings for the <optgroup>s; every key above appears exactly once.
+const cityGroups = [
+  [
+    ["首都圈", "수도권"],
+    [
+      "seoul",
+      "incheon",
+      "suwon",
+      "goyang",
+      "yongin",
+      "seongnam",
+      "bucheon",
+      "hwaseong",
+      "ansan",
+      "namyangju",
+      "anyang",
+      "pyeongtaek",
+      "siheung",
+      "paju",
+      "uijeongbu",
+      "gimpo",
+      "gwangju_gyeonggi",
+      "gwangmyeong",
+      "gunpo",
+      "hanam",
+      "osan",
+      "yangju",
+      "icheon",
+      "guri",
+      "anseong",
+      "pocheon",
+      "uiwang",
+      "yeoju",
+      "dongducheon",
+      "gwacheon",
+    ],
+  ],
+  [
+    ["江原", "강원"],
+    [
+      "chuncheon",
+      "wonju",
+      "gangneung",
+      "donghae",
+      "taebaek",
+      "sokcho",
+      "samcheok",
+    ],
+  ],
+  [
+    ["忠清", "충청"],
+    [
+      "daejeon",
+      "sejong",
+      "cheongju",
+      "chungju",
+      "jecheon",
+      "cheonan",
+      "gongju",
+      "boryeong",
+      "asan",
+      "seosan",
+      "nonsan",
+      "gyeryong",
+      "dangjin",
+    ],
+  ],
+  [
+    ["全罗", "전라"],
+    [
+      "gwangju",
+      "jeonju",
+      "gunsan",
+      "iksan",
+      "jeongeup",
+      "namwon",
+      "gimje",
+      "mokpo",
+      "yeosu",
+      "suncheon",
+      "naju",
+      "gwangyang",
+    ],
+  ],
+  [
+    ["庆尚", "경상"],
+    [
+      "busan",
+      "daegu",
+      "ulsan",
+      "pohang",
+      "gyeongju",
+      "gimcheon",
+      "andong",
+      "gumi",
+      "yeongju",
+      "yeongcheon",
+      "sangju",
+      "mungyeong",
+      "gyeongsan",
+      "changwon",
+      "jinju",
+      "tongyeong",
+      "sacheon",
+      "gimhae",
+      "miryang",
+      "geoje",
+      "yangsan",
+    ],
+  ],
+  [
+    ["济州", "제주"],
+    ["jeju", "seogwipo"],
+  ],
+];
 const levels = {
   basic: ["基础交流", "기초 회화"],
   fluent: ["流利", "유창함"],
@@ -275,14 +450,21 @@ function Field({ label, children }) {
     </label>
   );
 }
-function Select({ options, value, onChange, ...props }) {
+function Select({ options, value, onChange, groups, ...props }) {
+  const option = (k) => (
+    <option key={k} value={k}>
+      {options[k]}
+    </option>
+  );
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} {...props}>
-      {Object.entries(options).map(([k, v]) => (
-        <option key={k} value={k}>
-          {v}
-        </option>
-      ))}
+      {groups
+        ? groups.map(([label, keys]) => (
+            <optgroup key={label} label={label}>
+              {keys.map(option)}
+            </optgroup>
+          ))
+        : Object.keys(options).map(option)}
     </select>
   );
 }
@@ -717,7 +899,7 @@ function App() {
           </p>
         </div>
         <div>
-          <span>{t("韩国全境 · 25 个城市", "대한민국 전역 · 25개 도시")}</span>
+          <span>{t("韩国全境 · 85 个城市", "대한민국 전역 · 85개 도시")}</span>
           <small>
             © {new Date().getFullYear()} KoreaMate ·{" "}
             {t("所有服务时间均为韩国时间", "모든 시간은 한국 시간 기준")}
@@ -788,6 +970,7 @@ function SearchFields({ search, setSearch, t, labels }) {
         <Field label={t("服务城市", "도시")}>
           <Select
             options={labels(cities)}
+            groups={cityGroups.map(([label, keys]) => [t(...label), keys])}
             value={search.city}
             onChange={(v) => change("city", v)}
           />
@@ -2594,10 +2777,14 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
       <div className="form-grid">
         <Field label={t("服务城市", "서비스 도시")}>
           <select name="city" defaultValue={p?.city || "seoul"}>
-            {Object.entries(labels(cities)).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
+            {cityGroups.map(([label, keys]) => (
+              <optgroup key={label[0]} label={t(...label)}>
+                {keys.map((k) => (
+                  <option key={k} value={k}>
+                    {labels(cities)[k]}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </Field>
