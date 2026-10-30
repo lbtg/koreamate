@@ -615,14 +615,14 @@ function App() {
               failed={route === "/payments/fail"}
               navigate={navigate}
             />
+          ) : LEGAL[route] ? (
+            <LegalPage route={route} navigate={navigate} />
           ) : !user ? (
             <Auth
               {...ctx}
               portal={route.startsWith("/guide") ? "guide" : "guest"}
               returnTo={route + location.search}
             />
-          ) : LEGAL[route] ? (
-            <LegalPage route={route} navigate={navigate} />
           ) : route === "/payments/success" || route === "/payments/fail" ? (
             <PaymentReturn {...ctx} failed={route === "/payments/fail"} />
           ) : route === "/messages" || route.startsWith("/messages/") ? (
