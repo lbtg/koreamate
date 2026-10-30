@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       }
     }
     const headers = { "Content-Type": "application/json" };
-    for (const key of ["cookie", "origin", "x-csrf-token"])
+    for (const key of ["cookie", "origin", "x-csrf-token", "x-lang"])
       if (req.headers[key]) headers[key] = req.headers[key];
     if (process.env.BACKEND_GATEWAY_TOKEN)
       headers["x-gateway-token"] = process.env.BACKEND_GATEWAY_TOKEN;

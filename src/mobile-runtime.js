@@ -26,8 +26,21 @@ export function validateApiOrigin(value) {
     throw Error("App 服务地址必须是 HTTPS 域名");
   return url.origin;
 }
+// The language the reader chose, so API errors come back in it. Read per request
+// rather than captured once, since the switch takes effect without a reload.
+const currentLang = () => {
+  try {
+    return localStorage.getItem("km-language") === "ko" ? "ko" : "zh";
+  } catch {
+    return "zh";
+  }
+};
 export async function requestAPI(path, method, body, csrf) {
-  const headers = { "Content-Type": "application/json", "X-CSRF-Token": csrf };
+  const headers = {
+    "Content-Type": "application/json",
+    "X-CSRF-Token": csrf,
+    "X-Lang": currentLang(),
+  };
   if (nativeApp) {
     const origin = validateApiOrigin(import.meta.env.VITE_API_ORIGIN || "");
     // Native transport owns its cookie jar. Never copy session cookies to localStorage.

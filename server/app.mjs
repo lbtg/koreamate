@@ -1,6 +1,7 @@
 import http from "node:http";
 import { createPayments } from "./payments.mjs";
 import { createChat } from "./chat.mjs";
+import { translate, langOf } from "./i18n.mjs";
 import { DatabaseSync } from "node:sqlite";
 import {
   randomBytes,
@@ -1411,11 +1412,14 @@ export function createApp({
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.end(
         JSON.stringify({
-          error: e.status
-            ? e.message
-            : res.statusCode === 409
-              ? "该记录已处理，请刷新"
-              : "服务暂时不可用，请重试",
+          error: translate(
+            e.status
+              ? e.message
+              : res.statusCode === 409
+                ? "该记录已处理，请刷新"
+                : "服务暂时不可用，请重试",
+            langOf(req),
+          ),
         }),
       );
       if (res.statusCode === 500) console.error(e);
