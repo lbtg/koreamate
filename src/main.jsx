@@ -2030,7 +2030,7 @@ function OrderDetail(ctx) {
             !isGuest &&
             !isGuide &&
             b.cases.some((c) => c.status === "open") && (
-              <ChatAudit conversationId={b.conversationId} />
+              <ChatAudit conversationId={b.conversationId} t={t} />
             )}
           {!!b.cases.length && (
             <div className="panel">
@@ -2270,20 +2270,24 @@ function OrderDetail(ctx) {
                 <Field label={t("改期原因", "변경 사유")}>
                   <textarea name="reason" required />
                 </Field>
-                <Button disabled={busy}>发送给双方确认</Button>
+                <Button disabled={busy}>
+                  {t("发送给双方确认", "양측에 확인 요청")}
+                </Button>
               </form>
             </div>
           )}
           {!!b.ledger.length && (
             <div className="panel">
-              <h3>收付款记录</h3>
+              <h3>{t("收付款记录", "입출금 기록")}</h3>
               {b.ledger.map((l, i) => (
                 <div className="section-block" key={i}>
                   <b>
                     {
-                      { payment: "收款", refund: "退款", settlement: "结算" }[
-                        l.kind
-                      ]
+                      {
+                        payment: t("收款", "입금"),
+                        refund: t("退款", "환불"),
+                        settlement: t("结算", "정산"),
+                      }[l.kind]
                     }{" "}
                     · {money(l.amount)}
                   </b>
@@ -2298,15 +2302,20 @@ function OrderDetail(ctx) {
     </section>
   );
 }
-function ChatAudit({ conversationId }) {
+function ChatAudit({ conversationId, t }) {
   const [reason, setReason] = useState(""),
     [data, setData] = useState(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   return (
     <details className="panel">
-      <summary>售后沟通记录调阅</summary>
-      <p>仅用于处理本订单待处理售后。调阅原因及操作人会写入审计日志。</p>
+      <summary>{t("售后沟通记录调阅", "분쟁 대화 열람")}</summary>
+      <p>
+        {t(
+          "仅用于处理本订单待处理售后。调阅原因及操作人会写入审计日志。",
+          "이 예약의 미처리 분쟁을 다룰 때에만 사용합니다. 열람 사유와 담당자는 감사 로그에 기록됩니다.",
+        )}
+      </p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -2327,7 +2336,7 @@ function ChatAudit({ conversationId }) {
           }
         }}
       >
-        <Field label="调阅原因">
+        <Field label={t("调阅原因", "열람 사유")}>
           <textarea
             required
             minLength="5"
@@ -2336,7 +2345,9 @@ function ChatAudit({ conversationId }) {
             onChange={(e) => setReason(e.target.value)}
           />
         </Field>
-        <Button disabled={busy}>记录原因并调阅</Button>
+        <Button disabled={busy}>
+          {t("记录原因并调阅", "사유 기록 후 열람")}
+        </Button>
       </form>
       {error && <p className="notice error">{error}</p>}
       {data && (
@@ -2357,7 +2368,7 @@ function ChatAudit({ conversationId }) {
     </details>
   );
 }
-function PaymentReturn({ navigate, failed, refresh }) {
+function PaymentReturn({ navigate, failed, refresh, t }) {
   const [state, setState] = useState({ busy: false, error: "", result: null });
   const params = new URLSearchParams(location.search);
   async function confirm() {
@@ -2379,20 +2390,37 @@ function PaymentReturn({ navigate, failed, refresh }) {
     <section className="page">
       <div className="panel">
         <span className="eyebrow">PAYMENT STATUS</span>
-        <h1>{failed ? "付款未完成" : "核对并完成支付"}</h1>
+        <h1>
+          {failed
+            ? t("付款未完成", "결제가 완료되지 않았습니다")
+            : t("核对并完成支付", "결제 확인 및 완료")}
+        </h1>
         <p>
           {failed
-            ? "支付已取消或暂时未完成，请回到订单检查状态后重试。"
-            : "请确认完成支付。服务器将核对金额、预约有效期和支付机构结果；此页面本身不代表付款成功。"}
+            ? t(
+                "支付已取消或暂时未完成，请回到订单检查状态后重试。",
+                "결제가 취소되었거나 아직 완료되지 않았습니다. 예약으로 돌아가 상태를 확인한 뒤 다시 시도해 주세요.",
+              )
+            : t(
+                "请确认完成支付。服务器将核对金额、预约有效期和支付机构结果；此页面本身不代表付款成功。",
+                "결제를 확인해 주세요. 서버가 금액, 예약 유효 기간, 결제사 결과를 대조합니다. 이 화면 자체는 결제 성공을 뜻하지 않습니다.",
+              )}
         </p>
         {state.error && <p className="notice error">{state.error}</p>}
         {state.result?.pending && (
-          <p className="notice">结果仍在核对，请稍后查看订单。</p>
+          <p className="notice">
+            {t(
+              "结果仍在核对，请稍后查看订单。",
+              "결과를 확인하는 중입니다. 잠시 후 예약에서 확인해 주세요.",
+            )}
+          </p>
         )}
         <div className="actions">
           {!failed && (
             <Button disabled={state.busy} onClick={confirm}>
-              {state.busy ? "正在确认…" : "确认完成支付"}
+              {state.busy
+                ? t("正在确认…", "확인하는 중…")
+                : t("确认完成支付", "결제 확인")}
             </Button>
           )}
           <Button secondary onClick={() => navigate("/orders")}>
@@ -2490,7 +2518,9 @@ function GuideWorkspace(ctx) {
           profile ? (
             <Availability {...ctx} save={save} busy={busy} />
           ) : (
-            <div className="empty">请先提交个人资料。</div>
+            <div className="empty">
+              {t("请先提交个人资料。", "먼저 프로필을 제출해 주세요.")}
+            </div>
           )
         ) : tab === "orders" ? (
           <Orders {...ctx} />
@@ -2656,7 +2686,15 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
 function Availability({ t, revision, save, busy }) {
   const { data, loading, error } = useLoad("/guide/availability", revision),
     [mode, setMode] = useState("weekly");
-  const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+  const weekdays = [
+    t("周日", "일"),
+    t("周一", "월"),
+    t("周二", "화"),
+    t("周三", "수"),
+    t("周四", "목"),
+    t("周五", "금"),
+    t("周六", "토"),
+  ];
   return (
     <div className="detail-layout">
       <div className="panel">
@@ -2677,11 +2715,11 @@ function Availability({ t, revision, save, busy }) {
                 </span>
               </div>
               <span className={r.blocked ? "muted" : "available"}>
-                {r.blocked ? "关闭" : "开放"}
+                {r.blocked ? t("关闭", "차단") : t("开放", "가능")}
               </span>
               <button
                 className="icon-btn"
-                aria-label="删除时段"
+                aria-label={t("删除时段", "시간 삭제")}
                 disabled={busy}
                 onClick={() =>
                   save("/guide/availability/" + r.id, {}, "DELETE")
@@ -2764,7 +2802,7 @@ function Income(ctx) {
     <State loading={loading} error={error}>
       <div className="metrics">
         <Metric
-          label="已登记结算"
+          label={t("已登记结算", "정산 등록됨")}
           value={money(
             paid
               .filter((b) => b.settlement_status === "paid")
@@ -2772,25 +2810,25 @@ function Income(ctx) {
           )}
         />
         <Metric
-          label="待结算"
+          label={t("待结算", "정산 대기")}
           value={money(
             paid
               .filter((b) => b.settlement_status === "pending")
               .reduce((a, b) => a + amount(b), 0),
           )}
         />
-        <Metric label="已付款订单" value={paid.length} />
+        <Metric label={t("已付款订单", "결제 완료 예약")} value={paid.length} />
       </div>
       <div className="table-wrap panel">
         <table>
           <thead>
             <tr>
-              <th>订单</th>
-              <th>服务费</th>
-              <th>原佣金</th>
-              <th>退款</th>
-              <th>调整后应收</th>
-              <th>结算状态</th>
+              <th>{t("订单", "예약")}</th>
+              <th>{t("服务费", "서비스 금액")}</th>
+              <th>{t("原佣金", "원 수수료")}</th>
+              <th>{t("退款", "환불")}</th>
+              <th>{t("调整后应收", "조정 후 수령액")}</th>
+              <th>{t("结算状态", "정산 상태")}</th>
             </tr>
           </thead>
           <tbody>
@@ -2847,14 +2885,14 @@ function Admin(ctx) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const names = {
-    stats: "运营概览",
-    guides: "随行翻译与档期",
-    orders: "订单与财务",
-    cases: "售后处理",
-    reviews: "评价审核",
-    settings: "内容与规则",
-    users: "人员权限",
-    audit: "操作记录",
+    stats: t("运营概览", "운영 개요"),
+    guides: t("随行翻译与档期", "통역사 및 일정"),
+    orders: t("订单与财务", "예약 및 재무"),
+    cases: t("售后处理", "분쟁 처리"),
+    reviews: t("评价审核", "후기 심사"),
+    settings: t("内容与规则", "문구 및 규칙"),
+    users: t("人员权限", "담당자 권한"),
+    audit: t("操作记录", "작업 기록"),
   };
   async function save(path, data) {
     setBusy(true);
@@ -2863,7 +2901,7 @@ function Admin(ctx) {
       await api("/admin/" + path, "POST", data);
       refresh();
       if (path === "settings") await ctx.reloadSession();
-      message("已保存");
+      message(t("已保存", "저장했습니다"));
       return true;
     } catch (e) {
       setError(e.message);
@@ -2876,7 +2914,7 @@ function Admin(ctx) {
     <section className="admin-layout">
       <aside className="sidebar">
         <span className="eyebrow">KOREAMATE OPERATIONS</span>
-        <h2>运营工作台</h2>
+        <h2>{t("运营工作台", "운영 콘솔")}</h2>
         <span className="role-label">
           {pick(roles, user.role, t)} · {user.name}
         </span>
@@ -2892,7 +2930,12 @@ function Admin(ctx) {
             </button>
           ))}
         </nav>
-        <p className="small muted">所有操作均依据账户权限在服务端校验。</p>
+        <p className="small muted">
+          {t(
+            "所有操作均依据账户权限在服务端校验。",
+            "모든 작업은 계정 권한에 따라 서버에서 검증됩니다.",
+          )}
+        </p>
       </aside>
       <div className="admin-content">
         <div className="section-top">
@@ -2926,7 +2969,7 @@ function Admin(ctx) {
     </section>
   );
 }
-function AdminStats({ revision }) {
+function AdminStats({ revision, t }) {
   const { data: s, loading, error } = useLoad("/admin/stats", revision);
   return (
     <State loading={loading} error={error}>
@@ -2934,27 +2977,36 @@ function AdminStats({ revision }) {
         <>
           <div className="metrics">
             <Metric
-              label="已审核 / 随行翻译总数"
+              label={t("已审核 / 随行翻译总数", "심사 완료 / 전체 통역사")}
               value={`${s.approved} / ${s.guides}`}
             />
-            <Metric label="累计搜索" value={s.searches} />
-            <Metric label="预约申请" value={s.bookings} />
+            <Metric label={t("累计搜索", "누적 검색")} value={s.searches} />
+            <Metric label={t("预约申请", "예약 신청")} value={s.bookings} />
             <Metric label="已付款订单" value={s.paid} />
-            <Metric label="已完成订单" value={s.completed} />
-            <Metric label="收款扣除退款" value={money(s.revenue)} />
-            <Metric label="累计登记退款" value={money(s.refunded)} />
+            <Metric
+              label={t("已完成订单", "완료된 예약")}
+              value={s.completed}
+            />
+            <Metric
+              label={t("收款扣除退款", "입금에서 환불을 뺀 금액")}
+              value={money(s.revenue)}
+            />
+            <Metric
+              label={t("累计登记退款", "누적 등록 환불")}
+              value={money(s.refunded)}
+            />
           </div>
           <div className="panel table-wrap">
-            <h3>各服务场景分布</h3>
+            <h3>{t("各服务场景分布", "서비스 상황별 분포")}</h3>
             <p className="small muted">
               多选目的分别计数，合计可能大于订单总数。
             </p>
             <table>
               <thead>
                 <tr>
-                  <th>目的</th>
-                  <th>搜索次数</th>
-                  <th>预约数量</th>
+                  <th>{t("目的", "상황")}</th>
+                  <th>{t("搜索次数", "검색 수")}</th>
+                  <th>{t("预约数量", "예약 수")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2969,7 +3021,7 @@ function AdminStats({ revision }) {
             </table>
           </div>
           <div className="panel">
-            <h3>城市分布</h3>
+            <h3>{t("城市分布", "도시별 분포")}</h3>
             {s.cities.map((c) => (
               <div className="summary-line" key={c.city}>
                 <span>{cities[c.city][0]}</span>
@@ -3004,7 +3056,7 @@ function AdminGuides({ revision, save, busy, user, t }) {
             {g.purposes.map((p) => (
               <span key={p}>{purposes[p][0]}</span>
             ))}
-            {g.paused && <span>已暂停接单</span>}
+            {g.paused && <span>{t("已暂停接单", "예약 수락 중지")}</span>}
           </div>
           <p>{g.bio}</p>
           <p className="small muted">
@@ -3025,9 +3077,9 @@ function AdminGuides({ revision, save, busy, user, t }) {
                 });
               }}
             >
-              <Field label="处理结果">
+              <Field label={t("处理结果", "처리 결과")}>
                 <select name="status">
-                  <option value="approved">批准上架</option>
+                  <option value="approved">{t("批准上架", "승인")}</option>
                   <option value="needs_changes">退回补充资料</option>
                   <option value="rejected">拒绝申请</option>
                   <option value="suspended">下架</option>
