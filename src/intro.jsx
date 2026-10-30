@@ -40,7 +40,7 @@ export default function Intro({ onDone, t }) {
   const [leaving, setLeaving] = useState(false);
   const video = useRef(null);
   const cta = useRef(null);
-  useInlineAutoplay(video);
+  const playing = useInlineAutoplay(video);
   const done = useRef(false);
 
   const leave = () => {
@@ -74,10 +74,10 @@ export default function Intro({ onDone, t }) {
       onClick={leave}
       role="presentation"
     >
+      <div className="intro-still drifting" />
       <video
         ref={video}
-        className="intro-video"
-        poster="/media/intro-poster.jpg"
+        className={playing ? "intro-video playing" : "intro-video"}
         src="/media/intro.mp4"
         autoPlay
         loop

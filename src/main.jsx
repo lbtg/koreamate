@@ -876,21 +876,26 @@ function HeroBackdrop() {
     }
     setMotion(!still);
   }, []);
-  useInlineAutoplay(video, motion);
-  return motion ? (
-    <video
-      ref={video}
-      className="hero-video"
-      poster="/media/seoul-poster.jpg"
-      src="/media/seoul.mp4"
-      autoPlay
-      loop
-      preload="metadata"
-      aria-hidden="true"
-      {...INLINE_VIDEO_ATTRS}
-    />
-  ) : (
-    <div className="hero-video hero-still" />
+  const playing = useInlineAutoplay(video, motion);
+  // The still frame drifts underneath on its own. A browser that refuses to autoplay
+  // — WeChat's, most of the time — then still shows a moving backdrop, and the video
+  // fades over it the moment it does start.
+  return (
+    <>
+      <div className={motion ? "hero-still drifting" : "hero-still"} />
+      {motion && (
+        <video
+          ref={video}
+          className={playing ? "hero-video playing" : "hero-video"}
+          src="/media/seoul.mp4"
+          autoPlay
+          loop
+          preload="metadata"
+          aria-hidden="true"
+          {...INLINE_VIDEO_ATTRS}
+        />
+      )}
+    </>
   );
 }
 function Home(ctx) {

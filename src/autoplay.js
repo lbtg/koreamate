@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // WeChat's in-app browser does not autoplay video the way every other browser does.
 // On Android it runs Tencent's X5 kernel, which both blocks the first play() and wants
@@ -22,25 +22,35 @@ export const INLINE_VIDEO_ATTRS = {
 
 // `ready` lets a caller mount the element later — the hero only renders a <video>
 // once it has decided the reader wants motion, and the effect has to run again then.
+// Returns whether the element is actually playing, so the caller can keep a CSS
+// fallback on screen until it is. Autoplay can be refused outright, and the reader
+// should see motion either way.
 export function useInlineAutoplay(ref, ready = true) {
+  const [playing, setPlaying] = useState(false);
   useEffect(() => {
     if (!ready || !ref.current) return;
-    let playing = false;
+    const el = ref.current;
+    let started = false;
 
     const attempt = () => {
-      if (playing || !ref.current) return;
+      if (started || !ref.current) return;
       // Muted is what makes an unattended play() allowed at all. React sets it as a
       // DOM property only, and the older WebViews that need this code read the HTML
       // attribute, so write both.
       ref.current.muted = true;
       ref.current.setAttribute("muted", "");
-      const started = ref.current.play?.();
-      if (started?.then)
-        started.then(() => {
-          playing = true;
-        }, noop);
+      ref.current.play?.()?.then?.(noop, noop);
     };
     const noop = () => {};
+    // The element itself is the authority on whether anything is moving.
+    const onPlay = () => {
+      started = true;
+      setPlaying(true);
+    };
+    const onStop = () => setPlaying(false);
+    el.addEventListener("playing", onPlay);
+    el.addEventListener("pause", onStop);
+    el.addEventListener("ended", onStop);
 
     attempt();
 
@@ -57,9 +67,13 @@ export function useInlineAutoplay(ref, ready = true) {
     else document.addEventListener("WeixinJSBridgeReady", attempt, false);
 
     return () => {
+      el.removeEventListener("playing", onPlay);
+      el.removeEventListener("pause", onStop);
+      el.removeEventListener("ended", onStop);
       for (const name of gestures) document.removeEventListener(name, attempt);
       document.removeEventListener("visibilitychange", attempt);
       document.removeEventListener("WeixinJSBridgeReady", attempt);
     };
   }, [ref, ready]);
+  return playing;
 }
