@@ -89,8 +89,8 @@ export function createApp({
     paymentMinutes: 30,
     bufferMinutes: 30,
     settlementHours: 24,
-    heroTitle: "与当地人一起，走进韩国",
-    heroSubtitle: "按你的时间和目的，寻找合适的韩国随行翻译。",
+    heroTitle: "语言不通的地方，\n有人替你开口",
+    heroSubtitle: "按你的时间和场景，预约合适的中韩双语随行翻译。",
     support: "平台客服",
     rules:
       "预约需由随行翻译确认后付款。服务内容、集合地点及额外支出请在订单消息中确认。取消或退款申请由平台按订单约定处理。",
@@ -110,6 +110,21 @@ export function createApp({
   run(
     "UPDATE settings SET value=replace(value,'地陪','随行翻译') WHERE value LIKE '%地陪%'",
   );
+  // Only the untouched seed copy is replaced; an operator's own wording stays.
+  for (const [key, was, now_] of [
+    ["heroTitle", "与当地人一起，走进韩国", "语言不通的地方，\n有人替你开口"],
+    [
+      "heroSubtitle",
+      "按你的时间和目的，寻找合适的随行翻译。",
+      "按你的时间和场景，预约合适的中韩双语随行翻译。",
+    ],
+  ])
+    run(
+      "UPDATE settings SET value=? WHERE key=? AND value=?",
+      JSON.stringify(now_),
+      key,
+      JSON.stringify(was),
+    );
   const settings = () =>
     Object.fromEntries(
       q("SELECT * FROM settings").map((x) => [x.key, JSON.parse(x.value)]),

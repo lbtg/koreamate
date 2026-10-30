@@ -35,6 +35,7 @@ import {
 import "./platform.css";
 import ChatCenter from "./chat.jsx";
 import { LEGAL, LegalPage } from "./legal.jsx";
+import Intro, { shouldShowIntro, INTRO_ROUTE } from "./intro.jsx";
 import {
   MobileNavigation,
   AccountPage,
@@ -375,6 +376,7 @@ function App() {
       clearInterval(timer);
     };
   }, [session?.user?.id, revision]);
+  const [intro, setIntro] = useState(() => shouldShowIntro(location.pathname));
   const user = session?.user,
     adminZone = route.startsWith("/admin"),
     staff =
@@ -405,6 +407,15 @@ function App() {
   }
   return (
     <>
+      {intro && (
+        <Intro
+          t={t}
+          onDone={() => {
+            setIntro(false);
+            if (route === INTRO_ROUTE) navigate("/");
+          }}
+        />
+      )}
       <ConnectionNotice />
       {session?.preview && (
         <div className="showcase-bar">
@@ -817,6 +828,37 @@ function SearchFields({ search, setSearch, t, labels }) {
     </>
   );
 }
+// The hero film is decoration: anyone who has asked for less motion, or is paying for
+// their data, gets the still frame the video would have started on.
+function HeroBackdrop() {
+  const [motion, setMotion] = useState(false);
+  useEffect(() => {
+    let still = false;
+    try {
+      still =
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        !!navigator.connection?.saveData;
+    } catch {
+      still = false;
+    }
+    setMotion(!still);
+  }, []);
+  return motion ? (
+    <video
+      className="hero-video"
+      poster="/media/seoul-poster.jpg"
+      src="/media/seoul.mp4"
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-hidden="true"
+    />
+  ) : (
+    <div className="hero-video hero-still" />
+  );
+}
 function Home(ctx) {
   const { t, labels, search, setSearch, navigate, session } = ctx;
   const [results, setResults] = useState(null),
@@ -852,7 +894,7 @@ function Home(ctx) {
   return (
     <>
       <section className="hero">
-        <div className="hero-image" />
+        <HeroBackdrop />
         <div className="hero-shade" />
         <div className="hero-inner">
           <span className="eyebrow light">YOUR KOREA, YOUR PACE</span>

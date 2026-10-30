@@ -1,7 +1,7 @@
 // This module is imported only in the explicit showcase build, never in production.
 const settings = {
-  heroTitle: "与当地人一起，走进韩国",
-  heroSubtitle: "按你的时间和目的，寻找合适的韩国随行翻译。",
+  heroTitle: "语言不通的地方，\n有人替你开口",
+  heroSubtitle: "按你的时间和场景，预约合适的中韩双语随行翻译。",
   support: "平台客服",
   rules: "随行翻译确认后付款。此页面是界面预览，不接受真实预约。",
   faq: "所有时间均为韩国时间。预览人物为虚构示例。",
