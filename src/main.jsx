@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight,
@@ -36,6 +36,7 @@ import "./platform.css";
 import ChatCenter from "./chat.jsx";
 import { LEGAL, LegalPage } from "./legal.jsx";
 import Intro, { shouldShowIntro, INTRO_ROUTE } from "./intro.jsx";
+import { INLINE_VIDEO_ATTRS, useInlineAutoplay } from "./autoplay.js";
 import {
   MobileNavigation,
   AccountPage,
@@ -863,6 +864,7 @@ function SearchFields({ search, setSearch, t, labels }) {
 // their data, gets the still frame the video would have started on.
 function HeroBackdrop() {
   const [motion, setMotion] = useState(false);
+  const video = useRef(null);
   useEffect(() => {
     let still = false;
     try {
@@ -874,17 +876,18 @@ function HeroBackdrop() {
     }
     setMotion(!still);
   }, []);
+  useInlineAutoplay(video, motion);
   return motion ? (
     <video
+      ref={video}
       className="hero-video"
       poster="/media/seoul-poster.jpg"
       src="/media/seoul.mp4"
       autoPlay
-      muted
       loop
-      playsInline
       preload="metadata"
       aria-hidden="true"
+      {...INLINE_VIDEO_ATTRS}
     />
   ) : (
     <div className="hero-video hero-still" />
