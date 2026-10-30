@@ -645,7 +645,7 @@ function App() {
               t={t}
             />
           ) : LEGAL[route] ? (
-            <LegalPage route={route} navigate={navigate} />
+            <LegalPage route={route} navigate={navigate} t={t} />
           ) : !user ? (
             <Auth
               {...ctx}
@@ -701,7 +701,7 @@ function App() {
                 className="text-button"
                 onClick={() => navigate(path)}
               >
-                {page.title}
+                {t(...page.title)}
               </button>
             ))}
           </nav>
