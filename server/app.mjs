@@ -110,21 +110,28 @@ export function createApp({
   run(
     "UPDATE settings SET value=replace(value,'地陪','随行翻译') WHERE value LIKE '%地陪%'",
   );
-  // Only the untouched seed copy is replaced; an operator's own wording stays.
-  for (const [key, was, now_] of [
-    ["heroTitle", "与当地人一起，走进韩国", "语言不通的地方，\n有人替你开口"],
+  // Only the untouched seed copy is replaced; an operator's own wording stays. Each
+  // key lists every seed it has shipped with, since the 地陪 rename above already
+  // rewrote the copy a server upgrading from an older build is holding.
+  for (const [key, seeds, next] of [
+    ["heroTitle", ["与当地人一起，走进韩国"], "语言不通的地方，\n有人替你开口"],
     [
       "heroSubtitle",
-      "按你的时间和目的，寻找合适的随行翻译。",
+      [
+        "按你的时间和目的，寻找合适的韩国随行翻译。",
+        "按你的时间和目的，寻找合适的韩国地陪。",
+        "按你的时间和目的，寻找合适的随行翻译。",
+      ],
       "按你的时间和场景，预约合适的中韩双语随行翻译。",
     ],
   ])
-    run(
-      "UPDATE settings SET value=? WHERE key=? AND value=?",
-      JSON.stringify(now_),
-      key,
-      JSON.stringify(was),
-    );
+    for (const seed of seeds)
+      run(
+        "UPDATE settings SET value=? WHERE key=? AND value=?",
+        JSON.stringify(next),
+        key,
+        JSON.stringify(seed),
+      );
   const settings = () =>
     Object.fromEntries(
       q("SELECT * FROM settings").map((x) => [x.key, JSON.parse(x.value)]),
