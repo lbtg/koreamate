@@ -22,7 +22,34 @@ export const purposes = [
   "beauty",
   "concert",
 ];
-const cities = ["seoul", "busan", "incheon", "jeju"];
+// Must stay in step with the catalogue the frontend offers.
+const cities = [
+  "seoul",
+  "incheon",
+  "suwon",
+  "seongnam",
+  "yongin",
+  "goyang",
+  "busan",
+  "daegu",
+  "ulsan",
+  "changwon",
+  "gyeongju",
+  "pohang",
+  "andong",
+  "daejeon",
+  "sejong",
+  "cheonan",
+  "cheongju",
+  "gwangju",
+  "jeonju",
+  "yeosu",
+  "gangneung",
+  "sokcho",
+  "chuncheon",
+  "jeju",
+  "seogwipo",
+];
 const now = () => Date.now(),
   id = () => randomUUID();
 const hash = (t) => createHash("sha256").update(t).digest("hex");

@@ -93,11 +93,34 @@ const purposeIcons = {
   beauty: Sparkles,
   concert: Music2,
 };
+// Ordered roughly by region — capital area, south-east, central, south-west,
+// east coast, Jeju — so a long list still reads as a map rather than an index.
 const cities = {
   seoul: ["首尔", "서울"],
-  busan: ["釜山", "부산"],
   incheon: ["仁川", "인천"],
+  suwon: ["水原", "수원"],
+  seongnam: ["城南", "성남"],
+  yongin: ["龙仁", "용인"],
+  goyang: ["高阳", "고양"],
+  busan: ["釜山", "부산"],
+  daegu: ["大邱", "대구"],
+  ulsan: ["蔚山", "울산"],
+  changwon: ["昌原", "창원"],
+  gyeongju: ["庆州", "경주"],
+  pohang: ["浦项", "포항"],
+  andong: ["安东", "안동"],
+  daejeon: ["大田", "대전"],
+  sejong: ["世宗", "세종"],
+  cheonan: ["天安", "천안"],
+  cheongju: ["清州", "청주"],
+  gwangju: ["光州", "광주"],
+  jeonju: ["全州", "전주"],
+  yeosu: ["丽水", "여수"],
+  gangneung: ["江陵", "강릉"],
+  sokcho: ["束草", "속초"],
+  chuncheon: ["春川", "춘천"],
   jeju: ["济州", "제주"],
+  seogwipo: ["西归浦", "서귀포"],
 };
 const levels = {
   basic: ["基础交流", "기초 회화"],
@@ -156,6 +179,10 @@ const tr = (zh, ko) => {
     return zh;
   }
 };
+// Browsers that localise the native date/time picker from the field's own language
+// need it spelled out; the others follow the browser's UI language, which is already
+// the reader's own.
+const inputLang = () => tr("zh-CN", "ko");
 const money = (n) => "¥" + Number(n || 0).toLocaleString("zh-CN");
 const kst = (n) =>
   new Intl.DateTimeFormat("zh-CN", {
@@ -690,7 +717,7 @@ function App() {
           </p>
         </div>
         <div>
-          <span>Seoul · Busan · Incheon · Jeju</span>
+          <span>{t("韩国全境 · 25 个城市", "대한민국 전역 · 25개 도시")}</span>
           <small>
             © {new Date().getFullYear()} KoreaMate ·{" "}
             {t("所有服务时间均为韩国时间", "모든 시간은 한국 시간 기준")}
@@ -768,6 +795,7 @@ function SearchFields({ search, setSearch, t, labels }) {
         <Field label={t("服务日期", "날짜")}>
           <input
             type="date"
+            lang={inputLang()}
             min={day(0)}
             required
             value={search.date}
@@ -777,6 +805,7 @@ function SearchFields({ search, setSearch, t, labels }) {
         <Field label={t("开始时间 · 韩国时间", "시작 시간 · 한국 시간")}>
           <input
             type="time"
+            lang={inputLang()}
             required
             value={search.time}
             onChange={(e) => change("time", e.target.value)}
@@ -2270,10 +2299,16 @@ function OrderDetail(ctx) {
                 }}
               >
                 <Field label={t("新日期", "새 날짜")}>
-                  <input type="date" name="date" min={day(0)} required />
+                  <input
+                    type="date"
+                    lang={inputLang()}
+                    name="date"
+                    min={day(0)}
+                    required
+                  />
                 </Field>
                 <Field label={t("开始时间", "시작 시간")}>
-                  <input type="time" name="time" required />
+                  <input type="time" lang={inputLang()} name="time" required />
                 </Field>
                 <Field label={t("集合地点", "만날 장소")}>
                   <input name="meeting" />
@@ -2780,15 +2815,33 @@ function Availability({ t, revision, save, busy }) {
           </Field>
         ) : (
           <Field label={t("日期", "날짜")}>
-            <input name="date" type="date" min={day(0)} required />
+            <input
+              name="date"
+              type="date"
+              lang={inputLang()}
+              min={day(0)}
+              required
+            />
           </Field>
         )}
         <div className="form-grid">
           <Field label={t("开始", "시작")}>
-            <input name="start" type="time" defaultValue="09:00" required />
+            <input
+              name="start"
+              type="time"
+              lang={inputLang()}
+              defaultValue="09:00"
+              required
+            />
           </Field>
           <Field label={t("结束", "종료")}>
-            <input name="end" type="time" defaultValue="18:00" required />
+            <input
+              name="end"
+              type="time"
+              lang={inputLang()}
+              defaultValue="18:00"
+              required
+            />
           </Field>
         </div>
         <Button disabled={busy}>
@@ -3153,7 +3206,13 @@ function AdminGuides({ revision, save, busy, user, t }) {
               >
                 <div className="form-grid three">
                   <Field label={t("日期", "날짜")}>
-                    <input name="date" type="date" required min={day(0)} />
+                    <input
+                      name="date"
+                      type="date"
+                      lang={inputLang()}
+                      required
+                      min={day(0)}
+                    />
                   </Field>
                   <Field label={t("开始", "시작")}>
                     <input name="start" type="time" required />
