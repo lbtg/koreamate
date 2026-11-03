@@ -1152,11 +1152,15 @@ function Home(ctx) {
       </div>
       <section className="hero">
         <div className="hero-inner">
-          <span className="eyebrow light">YOUR KOREA, YOUR PACE</span>
+          {/* The English tagline is the kicker for a Chinese reader and the
+              headline for a Korean one, so neither sees it twice. */}
+          <span className="eyebrow light">
+            {t("YOUR PERSONAL LANGUAGE BUTLER, ANYWHERE YOU GO.", "KILOMETER")}
+          </span>
           <h1>
             {t(
               session.settings.heroTitle,
-              "현지 메이트와 함께\n나만의 한국을 만나세요",
+              "Your Personal Language Butler,\nAnywhere You Go.",
             )}
           </h1>
           <p>

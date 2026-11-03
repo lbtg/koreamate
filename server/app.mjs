@@ -177,7 +177,7 @@ export function createApp({
     paymentMinutes: 30,
     bufferMinutes: 30,
     settlementHours: 24,
-    heroTitle: "语言不通的地方，\n有人替你开口",
+    heroTitle: "开启你的在外语言管家，\n世界从此无界",
     heroSubtitle: "按你的时间和场景，预约合适的中韩双语随行翻译。",
     support: "平台客服",
     rules:
@@ -202,7 +202,11 @@ export function createApp({
   // key lists every seed it has shipped with, since the 地陪 rename above already
   // rewrote the copy a server upgrading from an older build is holding.
   for (const [key, seeds, next] of [
-    ["heroTitle", ["与当地人一起，走进韩国"], "语言不通的地方，\n有人替你开口"],
+    [
+      "heroTitle",
+      ["与当地人一起，走进韩国", "语言不通的地方，\n有人替你开口"],
+      "开启你的在外语言管家，\n世界从此无界",
+    ],
     [
       "heroSubtitle",
       [

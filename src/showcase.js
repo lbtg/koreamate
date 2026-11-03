@@ -1,6 +1,6 @@
 // This module is imported only in the explicit showcase build, never in production.
 const settings = {
-  heroTitle: "语言不通的地方，\n有人替你开口",
+  heroTitle: "开启你的在外语言管家，\n世界从此无界",
   heroSubtitle: "按你的时间和场景，预约合适的中韩双语随行翻译。",
   support: "平台客服",
   rules: "随行翻译确认后付款。此页面是界面预览，不接受真实预约。",
