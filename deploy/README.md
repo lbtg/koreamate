@@ -17,6 +17,22 @@
 5. 进入服务器终端，安全地临时设置 `ADMIN_EMAIL`、`ADMIN_PASSWORD`、`ADMIN_NAME`，使用相同数据库执行 `node server/app.mjs --create-admin`；Docker 可使用 `docker compose exec -e ... platform ...` 传入本机已有环境变量。创建后移除临时管理员密码变量。
 6. 给数据卷配置加密备份和恢复演练。可停服务做一致性快照，或者使用 SQLite 的在线备份工具；不能只复制活跃数据库文件而忽略 WAL。
 
+## 日常更新
+
+代码推到 `main` 之后，前端由 Vercel 自动部署；后端要在服务器上重建一次。
+`deploy/update.sh` 把这件事收成一条命令，并且在出问题时停下来而不是猜。
+
+```sh
+sudo install -m 755 deploy/update.sh /usr/local/bin/kilometer-update   # 装一次
+kilometer-update                                                       # 以后每次
+```
+
+它会依次：拉取 `origin/main`、列出本次更新的提交、重建并启动容器、
+然后轮询 `127.0.0.1:3001/api/health` 直到后端应答。
+服务器上存在未提交改动、构建失败、或 60 秒内后端没有应答，都会报错退出并打印日志；
+数据库在命名卷里，整个过程不碰它。
+可用 `KILOMETER_REPO` 指定代码目录（默认 `~/koreamate`）。
+
 ## 数据库备份
 
 ECS 快照和文件备份保住的是机器，保不住数据库的一致性：数据库跑在 WAL 模式下，
