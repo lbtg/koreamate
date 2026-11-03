@@ -50,15 +50,16 @@ import {
   startMobileRuntime,
 } from "./mobile-runtime.js";
 const purposes = {
-  shopping: ["购物陪同", "쇼핑 동행"],
-  errands: ["行政手续", "행정·생활 동행"],
+  shopping: ["购物翻译", "쇼핑 통역"],
+  errands: ["行政手续", "행정·생활 통역"],
   business: ["商务口译", "비즈니스 통역"],
-  medical: ["就医陪同", "의료 동행"],
-  beauty: ["医美陪同", "미용·성형 동행"],
-  concert: ["活动陪同", "행사 동행"],
+  medical: ["就医翻译", "의료 통역"],
+  beauty: ["医美翻译", "미용·성형 통역"],
+  concert: ["活动翻译", "행사 통역"],
 };
 // Each scene list ends with 等等 / 등: the categories are examples of when someone
-// needs a bilingual companion, not a closed menu.
+// needs an interpreter, not a closed menu. Every label says 翻译 / 통역 rather than
+// 陪同 / 동행 — the service is interpreting, and the guiding word carries 여행업 risk.
 const purposeScenes = {
   shopping: [
     "百货商场、免税店、美妆门店、传统市场等等",
@@ -73,8 +74,8 @@ const purposeScenes = {
     "비즈니스 미팅, 상담, 전시회, 공장 방문, 소싱 등",
   ],
   medical: [
-    "医院挂号、问诊沟通、检查陪同、用药说明等等",
-    "접수, 진료 통역, 검사 동행, 복약 안내 등",
+    "医院挂号、问诊沟通、检查说明、用药说明等等",
+    "접수, 진료 통역, 검사 안내, 복약 안내 등",
   ],
   beauty: [
     "皮肤科、整形外科的面诊沟通与术后随访等等",
@@ -1357,7 +1358,7 @@ function Home(ctx) {
             <p>
               {t(
                 "按小时预约中韩双语随行翻译。以下是最常被预约的六类场景，实际需求不限于此。",
-                "시간 단위로 한·중 통역 동행을 예약하세요. 아래는 가장 많이 찾는 여섯 가지 상황이며, 이에 한정되지 않습니다.",
+                "시간 단위로 한·중 통역을 예약하세요. 아래는 가장 많이 찾는 여섯 가지 상황이며, 이에 한정되지 않습니다.",
               )}
             </p>
           </header>
@@ -1386,8 +1387,8 @@ function Home(ctx) {
           </div>
           <p className="scenes-note">
             {t(
-              "随行翻译只提供语言沟通与现场陪同，不提供景点导览讲解，也不安排行程或代订交通住宿。",
-              "통역사는 언어 소통과 현장 동행만 제공하며, 관광 안내·일정 구성·교통 및 숙박 예약은 하지 않습니다.",
+              "随行翻译只在现场提供语言沟通与翻译，不提供景点导览讲解，也不安排行程或代订交通住宿。",
+              "통역사는 현장에서 언어 소통과 통역만 제공하며, 관광 안내·일정 구성·교통 및 숙박 예약은 하지 않습니다.",
             )}
           </p>
         </section>
@@ -1424,7 +1425,7 @@ function Home(ctx) {
               [
                 MessageCircle,
                 "03",
-                t("有记录的同行", "기록이 남는 동행"),
+                t("全程有记录", "모든 과정이 기록으로"),
                 t(
                   "行程沟通、订单进度与售后集中在同一处。",
                   "메시지, 예약 상태, 문의를 한 곳에서.",
@@ -2192,7 +2193,7 @@ function OrderDetail(ctx) {
                   act("review", formData(e));
                 }}
               >
-                <h3>{t("评价这次同行", "이번 동행 후기")}</h3>
+                <h3>{t("评价这次服务", "이번 서비스 후기")}</h3>
                 <Field label={t("评分", "평점")}>
                   <select name="rating">
                     {[5, 4, 3, 2, 1].map((n) => (
@@ -2877,12 +2878,12 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
         )}
       </p>
       <div className="pledge">
-        <b>{t("随行翻译服务守则", "통역 동행 서비스 수칙")}</b>
+        <b>{t("随行翻译服务守则", "통역 서비스 수칙")}</b>
         <ul>
           <li>
             {t(
-              "我只提供语言翻译与随行陪同，不提供旅游景点的导览与讲解。",
-              "저는 통역과 동행만 제공하며, 관광지 안내·해설은 하지 않습니다.",
+              "我只在现场提供语言翻译，不提供旅游景点的导览与讲解。",
+              "저는 현장에서 통역만 제공하며, 관광지 안내·해설은 하지 않습니다.",
             )}
           </li>
           <li>

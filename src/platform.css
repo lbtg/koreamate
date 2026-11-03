@@ -2316,6 +2316,14 @@ td .text-button {
    anywhere, Escape — resolves to the same leave(), and the site is already mounted
    behind it rather than waiting on this to finish. */
 .intro {
+  /* The type is tinted to the K-MATE wordmark burnt into the film. The mark itself
+     is a warm taupe (#655c54, sampled off the poster frame) and reads as the brand
+     colour, but the copy sits at the bottom of the shot over dark asphalt, so the
+     mark's own value would disappear. These are the same hue carried up to a
+     legible lightness: warm, clearly not white, and still readable on the scrim. */
+  --km-mark: #655c54;
+  --km-mark-ink: #ead9c6;
+  --km-mark-soft: #d6c6b5;
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -2381,7 +2389,7 @@ td .text-button {
   align-items: center;
   text-align: center;
   padding: 0 24px clamp(46px, 6.5vh, 70px);
-  color: #fff;
+  color: var(--km-mark-ink);
 }
 .intro-en {
   font-size: clamp(25px, 3.2vw, 40px) !important;
@@ -2393,26 +2401,31 @@ td .text-button {
   line-height: 1.28;
   white-space: pre-line;
   margin: 0 0 14px;
-  text-shadow: 0 2px 22px rgba(9, 35, 29, 0.55);
+  color: var(--km-mark-ink);
+  /* Warmer and deeper than the old green shadow: the tinted type needs more
+     separation from the street than white did. */
+  text-shadow:
+    0 2px 24px rgba(24, 18, 13, 0.62),
+    0 1px 3px rgba(24, 18, 13, 0.4);
 }
 .intro-body p {
   max-width: 540px;
   margin: 0 0 30px;
   font-size: 14.5px;
-  color: #e4ece6;
-  text-shadow: 0 1px 12px rgba(9, 35, 29, 0.6);
+  color: var(--km-mark-soft);
+  text-shadow: 0 1px 12px rgba(24, 18, 13, 0.66);
 }
 .intro-cta {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   padding: 16px 38px;
-  border: 1px solid rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(234, 217, 198, 0.6);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(234, 217, 198, 0.14);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  color: #fff;
+  color: var(--km-mark-ink);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.4px;
@@ -2423,14 +2436,14 @@ td .text-button {
 }
 .intro-cta:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.24);
-  border-color: #fff;
+  background: rgba(234, 217, 198, 0.24);
+  border-color: var(--km-mark-ink);
 }
 .intro-skip {
   margin-top: 18px;
   font-size: 12px;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.66);
+  color: rgba(234, 217, 198, 0.68);
 }
 @media (max-width: 620px) {
   .intro-body {

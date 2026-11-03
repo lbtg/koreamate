@@ -182,7 +182,7 @@ export function createApp({
     support: "平台客服",
     rules:
       "预约需由随行翻译确认后付款。服务内容、集合地点及额外支出请在订单消息中确认。取消或退款申请由平台按订单约定处理。",
-    faq: "所有预约时间均为韩国时间。平台审核通过的随行翻译才能接受预约。医疗类别仅用于匹配已核准的陪同服务范围，不提供诊断或治疗。",
+    faq: "所有预约时间均为韩国时间。平台审核通过的随行翻译才能接受预约。医疗类别仅用于匹配已核准的翻译服务范围，不提供诊断或治疗。",
     paymentInstructions: "",
   };
   for (const [k, v] of Object.entries(defaults))
@@ -197,6 +197,11 @@ export function createApp({
   // wording on servers that are already running.
   run(
     "UPDATE settings SET value=replace(value,'地陪','随行翻译') WHERE value LIKE '%地陪%'",
+  );
+  // The six categories dropped 陪同 for 翻译 — accompaniment is what 여행업 regulates,
+  // interpreting is what we sell — so the seeded FAQ copy has to follow.
+  run(
+    "UPDATE settings SET value=replace(value,'已核准的陪同服务范围','已核准的翻译服务范围') WHERE value LIKE '%已核准的陪同服务范围%'",
   );
   // Only the untouched seed copy is replaced; an operator's own wording stays. Each
   // key lists every seed it has shipped with, since the 地陪 rename above already
