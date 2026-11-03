@@ -662,7 +662,7 @@ function App() {
       {adminZone ? (
         <header className="admin-header">
           <button className="brand" onClick={() => navigate("/admin")}>
-            Korea<span>Mate</span> <small>{t("运营管理", "운영 관리")}</small>
+            Kilo<span>meter</span> <small>{t("运营管理", "운영 관리")}</small>
           </button>
           <div>
             {staff && (
@@ -682,7 +682,7 @@ function App() {
         <header className="header">
           <div className="nav-wrap">
             <button className="brand" onClick={() => navigate("/")}>
-              Korea<span>Mate</span>
+              Kilo<span>meter</span>
               <span className="brand-dot">✦</span>
             </button>
             <nav className={mobile ? "nav open" : "nav"}>
@@ -892,7 +892,7 @@ function App() {
       <footer>
         <div>
           <b className="brand">
-            Korea<span>Mate</span>
+            Kilo<span>meter</span>
           </b>
           <p>
             {t("让每一次同行，都有明确的约定。", "함께하는 시간, 분명한 약속.")}
@@ -901,7 +901,7 @@ function App() {
         <div>
           <span>{t("韩国全境 · 85 个城市", "대한민국 전역 · 85개 도시")}</span>
           <small>
-            © {new Date().getFullYear()} KoreaMate ·{" "}
+            © {new Date().getFullYear()} Kilometer ·{" "}
             {t("所有服务时间均为韩国时间", "모든 시간은 한국 시간 기준")}
           </small>
           <nav className="legal-nav">
@@ -1516,7 +1516,7 @@ function Auth({
         data,
       );
       await reloadSession();
-      message(t("欢迎来到 KoreaMate", "KoreaMate에 오신 것을 환영합니다"));
+      message(t("欢迎来到 Kilometer", "Kilometer에 오신 것을 환영합니다"));
       navigate(safeNext(result.user.role));
     } catch (e) {
       setError(e.message);
@@ -1539,7 +1539,7 @@ function Auth({
       </div>
       <div className="auth-panel">
         <span className="eyebrow">
-          {adminPortal ? "KOREAMATE OPERATIONS" : "WELCOME TO KOREAMATE"}
+          {adminPortal ? "KILOMETER OPERATIONS" : "WELCOME TO KILOMETER"}
         </span>
         <h2>
           {adminPortal
@@ -3164,7 +3164,7 @@ function Admin(ctx) {
   return (
     <section className="admin-layout">
       <aside className="sidebar">
-        <span className="eyebrow">KOREAMATE OPERATIONS</span>
+        <span className="eyebrow">KILOMETER OPERATIONS</span>
         <h2>{t("运营工作台", "운영 콘솔")}</h2>
         <span className="role-label">
           {pick(roles, user.role, t)} · {user.name}

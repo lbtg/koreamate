@@ -80,14 +80,14 @@ export function InstallCard({ t }) {
   if (installed)
     return (
       <p className="muted">
-        KoreaMate · {t("手机 App 模式", "모바일 앱 모드")}
+        Kilometer · {t("手机 App 模式", "모바일 앱 모드")}
       </p>
     );
   return (
     <section className="install-card">
       <Download size={23} />
       <div>
-        <b>{t("把 KoreaMate 放到手机桌面", "KoreaMate 를 홈 화면에 추가")}</b>
+        <b>{t("把 Kilometer 放到手机桌面", "Kilometer 를 홈 화면에 추가")}</b>
         <p>
           {t(
             "随时查看预约，与同行随行翻译保持联系。",
@@ -127,7 +127,7 @@ export function AccountPage({ user, navigate, logout, t }) {
           <UserRound size={32} />
         </div>
         <div>
-          <span className="eyebrow">MY KOREAMATE</span>
+          <span className="eyebrow">MY KILOMETER</span>
           <h1>
             {user ? user.name : t("你的韩国同行伙伴", "한국 여행의 동반자")}
           </h1>
@@ -229,7 +229,7 @@ export function PaymentHandoff({ failed, navigate, t }) {
   return (
     <div className="page narrow">
       <h1>
-        {t("返回 KoreaMate 完成支付核对", "KoreaMate 로 돌아가 결제 확인")}
+        {t("返回 Kilometer 完成支付核对", "Kilometer 로 돌아가 결제 확인")}
       </h1>
       <p>
         {t(
@@ -243,7 +243,7 @@ export function PaymentHandoff({ failed, navigate, t }) {
           "koreamate://payments/" + (failed ? "fail" : "success") + "?" + params
         }
       >
-        {t("打开 KoreaMate App", "KoreaMate 앱 열기")}
+        {t("打开 Kilometer App", "Kilometer 앱 열기")}
       </a>
       <p>
         {t(

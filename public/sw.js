@@ -1,5 +1,5 @@
 // Only a generic offline page is cached. Never cache accounts, chats, orders or payment responses.
-const CACHE = "koreamate-offline-v1";
+const CACHE = "kilometer-offline-v1";
 self.addEventListener("install", (event) =>
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.add("/offline.html")),
@@ -14,7 +14,7 @@ self.addEventListener("activate", (event) =>
           Promise.all(
             keys
               .filter(
-                (key) => key.startsWith("koreamate-offline-") && key !== CACHE,
+                (key) => key.startsWith("kilometer-offline-") && key !== CACHE,
               )
               .map((key) => caches.delete(key)),
           ),

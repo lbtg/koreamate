@@ -1,6 +1,6 @@
 {
   "appId": "com.koreamate.app",
-  "appName": "KoreaMate",
+  "appName": "Kilometer",
   "webDir": "dist",
   "server": { "androidScheme": "https" },
   "ios": { "contentInset": "automatic" },

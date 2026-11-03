@@ -87,17 +87,19 @@ export default function Intro({ onDone, t }) {
       />
       <div className="intro-scrim" />
       <div className="intro-body">
-        <span className="intro-kicker">ACROSS ALL 85 CITIES OF KOREA</span>
+        <span className="intro-kicker">
+          EVERY KILOMETER · SOMEONE WHO SPEAKS FOR YOU
+        </span>
         <h1>
           {t(
-            "在韩国，\n有人替你开口。",
-            "한국에서,\n당신의 말이 되어 드립니다.",
+            "无论走到多远，\n都有人替你开口。",
+            "아무리 멀리 가도,\n당신의 말이 되어 드립니다.",
           )}
         </h1>
         <p>
           {t(
-            "按小时预约中韩双语随行翻译 —— 购物、手续、商务、就医、医美、活动。",
-            "시간 단위로 예약하는 한·중 통역 동행 — 쇼핑, 행정, 비즈니스, 의료, 미용, 행사.",
+            "按小时预约当地双语陪同 —— 购物、手续、商务、就医、医美、活动。从首尔开始，一公里一公里，走向世界。",
+            "시간 단위로 예약하는 현지 이중언어 동행 — 쇼핑, 행정, 비즈니스, 의료, 미용, 행사. 서울에서 시작해 한 걸음씩 세계로.",
           )}
         </p>
         <button

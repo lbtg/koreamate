@@ -1548,6 +1548,6 @@ if (
   app.server.listen(
     Number(process.env.PORT) || 3001,
     process.env.HOST || "127.0.0.1",
-    () => console.log("KoreaMate server listening"),
+    () => console.log("Kilometer server listening"),
   );
 }
