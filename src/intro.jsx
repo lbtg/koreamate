@@ -87,25 +87,15 @@ export default function Intro({ onDone, t }) {
       />
       <div className="intro-scrim" />
       <div className="intro-body">
-        <h1>
-          {t(
-            "开启你的在外语言管家，\n世界从此无界",
-            "Your Personal Language Butler,\nAnywhere You Go.",
-          )}
+        {/* One line, the same in every language. The Chinese said the same thing
+            directly above it and landed on the wordmark burnt into the film. */}
+        <h1 className="intro-en">
+          {"Your Personal Language Butler,\nAnywhere You Go."}
         </h1>
-        {/* The film carries its own wordmark mid-screen, so the English line sits
-            under the headline rather than above it. A Korean reader's headline is
-            already this line, so they get nothing here — t() falls back to Chinese
-            on an empty string, which is why the language is probed instead. */}
-        {t("zh", "ko") === "zh" && (
-          <span className="intro-tagline">
-            YOUR PERSONAL LANGUAGE BUTLER, ANYWHERE YOU GO.
-          </span>
-        )}
         <p>
           {t(
-            "按小时预约当地双语陪同 —— 购物、手续、商务、就医、医美、活动。从首尔开始，一公里一公里，走向世界。",
-            "시간 단위로 예약하는 현지 이중언어 동행 — 쇼핑, 행정, 비즈니스, 의료, 미용, 행사. 서울에서 시작해 한 걸음씩 세계로.",
+            "按小时预约专业随行翻译 —— 购物、手续、商务、就医、医美、活动。从首尔开始，一公里一公里，走向世界。",
+            "시간 단위로 예약하는 전문 통역사 — 쇼핑, 행정, 비즈니스, 의료, 미용, 행사. 서울에서 시작해 한 걸음씩 세계로.",
           )}
         </p>
         <button
