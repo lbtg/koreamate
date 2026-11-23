@@ -16,12 +16,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="KiloMate" />
     <link rel="icon" href="/favicon.svg" />
-    <!-- 换正式域名时，这里的 canonical、og:url 和 public/robots.txt、public/sitemap.xml 要一起改。 -->
-    <link rel="canonical" href="https://hikoreamate.com/" />
+    <!-- 域名只写在 vite.config.js 的 PUBLIC_ORIGIN 一处；robots.txt 和 sitemap.xml 也由它生成。 -->
+    <link rel="canonical" href="__PUBLIC_ORIGIN__/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="KiloMate" />
     <meta property="og:locale" content="zh_CN" />
-    <meta property="og:url" content="https://hikoreamate.com/" />
+    <meta property="og:url" content="__PUBLIC_ORIGIN__/" />
     <meta property="og:title" content="KiloMate · 韩国随行翻译预约" />
     <meta
       property="og:description"
@@ -29,7 +29,7 @@
     />
     <meta
       property="og:image"
-      content="https://hikoreamate.com/media/seoul-poster.jpg"
+      content="__PUBLIC_ORIGIN__/media/seoul-poster.jpg"
     />
     <meta name="twitter:card" content="summary_large_image" />
     <title>KiloMate · 韩国随行翻译预约</title>
