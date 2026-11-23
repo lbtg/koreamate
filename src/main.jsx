@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight,
@@ -31,12 +31,26 @@ import {
   UserRound,
   Plus,
   Trash2,
+  Award,
+  LifeBuoy,
+  PhoneCall,
+  Timer,
+  AlertTriangle,
 } from "lucide-react";
 import "./platform.css";
 import ChatCenter from "./chat.jsx";
 import { LEGAL, LegalPage } from "./legal.jsx";
 import Intro, { shouldShowIntro, INTRO_ROUTE } from "./intro.jsx";
 import { INLINE_VIDEO_ATTRS, useInlineAutoplay } from "./autoplay.js";
+import {
+  LEVELS,
+  LEVEL_KEYS,
+  MODES,
+  PRICING_DEFAULTS,
+  cancellationTerms,
+  minimumMinutes,
+  quote,
+} from "./pricing.js";
 import {
   MobileNavigation,
   AccountPage,
@@ -345,6 +359,12 @@ const roles = {
   reviewer: ["审核人员", "심사 담당"],
 };
 // Each map holds a pair; an unknown key still has to read as something.
+// A duration reads as hours when it is whole hours and as minutes when it is not,
+// which is what the two service modes need: 3 小时 for an on-site day, 20 分钟 for a call.
+const duration = (minutes, t) =>
+  minutes % 60 === 0
+    ? `${minutes / 60} ${t("小时", "시간")}`
+    : `${minutes} ${t("分钟", "분")}`;
 const pick = (map, key, t) => (map[key] ? t(...map[key]) : key);
 // Components get t() as a prop; module-level helpers read the stored choice instead.
 // The two agree because App writes km-language whenever the reader switches.
@@ -532,7 +552,13 @@ function App() {
       city: p.get("city") || "seoul",
       date: p.get("date") || day(),
       time: p.get("time") || "10:00",
-      hours: Number(p.get("hours") || 3),
+      // 两种服务模式: an interpreter in the room, or a voice call. The call is priced
+      // off a reduced base and has its own ten-minute minimum, so it is part of the
+      // search rather than something chosen at checkout.
+      mode: MODES[p.get("mode")] ? p.get("mode") : "onsite",
+      // Duration lives in minutes because a voice call is booked in minutes; the
+      // on-site picker still offers whole hours.
+      minutes: Number(p.get("minutes") || Number(p.get("hours") || 3) * 60),
       adults: Number(p.get("adults") || 1),
       children: Number(p.get("children") || 0),
       purposes: (p.get("purposes") || "shopping")
@@ -692,6 +718,18 @@ function App() {
                 onClick={() => navigate("/")}
               >
                 {t("寻找随行翻译", "메이트 찾기")}
+              </button>
+              <button
+                className={route === "/interpreters" ? "active" : ""}
+                onClick={() => navigate("/interpreters")}
+              >
+                {t("译员列表", "통역사 목록")}
+              </button>
+              <button
+                className={route === "/help" ? "active" : ""}
+                onClick={() => navigate("/help")}
+              >
+                {t("帮助中心", "도움말 센터")}
               </button>
               {user && (
                 <button onClick={() => navigate("/orders")}>
@@ -855,6 +893,10 @@ function App() {
               navigate={navigate}
               t={t}
             />
+          ) : route === "/interpreters" ? (
+            <Interpreters {...ctx} />
+          ) : route === "/help" ? (
+            <Help {...ctx} />
           ) : LEGAL[route] ? (
             <LegalPage route={route} navigate={navigate} t={t} />
           ) : !user ? (
@@ -965,8 +1007,52 @@ function PurposePicker({ value, onChange, t }) {
 }
 function SearchFields({ search, setSearch, t, labels }) {
   const change = (k, v) => setSearch((s) => ({ ...s, [k]: v }));
+  const online = search.mode === "online";
+  // Switching mode has to move the duration too: 3 hours is a strange voice call and
+  // 20 minutes is not a booking anyone travels for.
+  const setMode = (mode) =>
+    setSearch((s) => ({
+      ...s,
+      mode,
+      minutes: mode === "online" ? 30 : Math.max(120, s.minutes),
+    }));
   return (
     <>
+      <div
+        className="mode-switch"
+        role="group"
+        aria-label={t("服务模式", "서비스 방식")}
+      >
+        {[
+          [
+            "onsite",
+            Users,
+            t("线下一对一", "오프라인 1:1"),
+            t("译员到现场，全程翻译", "통역사가 현장에서 통역"),
+          ],
+          [
+            "online",
+            MessageCircle,
+            t("线上语音通话", "온라인 음성 통화"),
+            t(
+              "远程实时翻译，约为线下的一半",
+              "원격 실시간 통역, 오프라인의 약 50%",
+            ),
+          ],
+        ].map(([key, Icon, title, note]) => (
+          <button
+            key={key}
+            type="button"
+            className={search.mode === key ? "mode-option on" : "mode-option"}
+            aria-pressed={search.mode === key}
+            onClick={() => setMode(key)}
+          >
+            <Icon size={18} />
+            <b>{title}</b>
+            <small>{note}</small>
+          </button>
+        ))}
+      </div>
       <div className="search-grid">
         <Field label={t("服务城市", "도시")}>
           <Select
@@ -995,36 +1081,46 @@ function SearchFields({ search, setSearch, t, labels }) {
             onChange={(e) => change("time", e.target.value)}
           />
         </Field>
-        <Field label={t("服务时长", "이용 시간")}>
+        <Field
+          label={
+            online
+              ? t("通话时长 · 最低10分钟", "통화 시간 · 최소 10분")
+              : t("服务时长 · 最低2小时", "이용 시간 · 최소 2시간")
+          }
+        >
           <Select
-            value={search.hours}
-            onChange={(v) => change("hours", Number(v))}
+            value={search.minutes}
+            onChange={(v) => change("minutes", Number(v))}
             options={Object.fromEntries(
-              Array.from({ length: 12 }, (_, i) => [
-                i + 1,
-                `${i + 1} ${t("小时", "시간")}`,
-              ]),
+              (online
+                ? [10, 15, 20, 30, 45, 60, 90, 120]
+                : Array.from({ length: 12 }, (_, i) => (i + 1) * 60)
+              ).map((m) => [m, duration(m, t)]),
             )}
           />
         </Field>
-        <Field label={t("成人", "성인")}>
-          <input
-            type="number"
-            min="1"
-            max="12"
-            value={search.adults}
-            onChange={(e) => change("adults", Number(e.target.value))}
-          />
-        </Field>
-        <Field label={t("儿童", "어린이")}>
-          <input
-            type="number"
-            min="0"
-            max="12"
-            value={search.children}
-            onChange={(e) => change("children", Number(e.target.value))}
-          />
-        </Field>
+        {!online && (
+          <>
+            <Field label={t("成人", "성인")}>
+              <input
+                type="number"
+                min="1"
+                max="12"
+                value={search.adults}
+                onChange={(e) => change("adults", Number(e.target.value))}
+              />
+            </Field>
+            <Field label={t("儿童", "어린이")}>
+              <input
+                type="number"
+                min="0"
+                max="12"
+                value={search.children}
+                onChange={(e) => change("children", Number(e.target.value))}
+              />
+            </Field>
+          </>
+        )}
       </div>
       <p className="label">
         {t(
@@ -1303,10 +1399,10 @@ function Home(ctx) {
                           <small>{t("本次服务总价", "선택 일정 총액")}</small>
                           <strong>{money(g.total)}</strong>
                           <small>
-                            {search.hours}
-                            {t("小时", "시간")} ·{" "}
-                            {Number(search.adults) + Number(search.children)}
-                            {t("人", "명")}
+                            {duration(search.minutes, t)}
+                            {search.mode === "online"
+                              ? ` · ${t("语音通话", "음성 통화")}`
+                              : ` · ${Number(search.adults) + Number(search.children)}${t("人", "명")}`}
                           </small>
                         </div>
                         <button
@@ -1621,12 +1717,81 @@ function Auth({
     </section>
   );
 }
+// The browser's copy of the price. It runs the same module the server does, on the
+// rules the server just handed us, so the breakdown here is the one that will be
+// charged — and the server still recomputes it and refuses a mismatch.
+function useQuote(g, search, session) {
+  return useMemo(() => {
+    if (!g?.rate) return null;
+    return quote({
+      rate: g.rate,
+      level: g.level,
+      mode: search.mode,
+      startMs: Date.parse(`${search.date}T${search.time}:00+09:00`),
+      minutes: search.minutes,
+      purposes: search.purposes,
+      settings: session?.pricing || PRICING_DEFAULTS,
+    });
+  }, [g, search, session]);
+}
+const SURCHARGE_LABEL = {
+  urgent: ["紧急预约加成（3小时内下单）", "긴급 예약 할증 (3시간 이내)"],
+  night: ["夜间加成（22:00 以后开始）", "야간 할증 (22시 이후 시작)"],
+  weekend: ["周末 / 节假日加成", "주말·공휴일 할증"],
+  scene: ["专业场景加成", "전문 상황 할증"],
+};
+function QuoteBreakdown({ price, t }) {
+  if (!price) return null;
+  return (
+    <div className="quote">
+      <div className="quote-row">
+        <span>
+          {t("基础费用", "기본 요금")}
+          <small>
+            {money(price.hourly)}
+            {t("/小时", "/시간")}
+            {price.mode === "online" && ` × ${price.modePercent}%`} ×{" "}
+            {duration(price.billedMinutes, t)}
+          </small>
+        </span>
+        <b>{money(price.base)}</b>
+      </div>
+      {price.minimumApplied && (
+        <p className="quote-note">
+          {t(
+            `不足最低计费时长，按 ${duration(price.billedMinutes, t)} 计费。`,
+            `최소 과금 시간에 미달하여 ${duration(price.billedMinutes, t)} 기준으로 청구됩니다.`,
+          )}
+        </p>
+      )}
+      {price.lines.map((l) => (
+        <div className="quote-row surcharge" key={l.key}>
+          <span>
+            {t(...(SURCHARGE_LABEL[l.key] || [l.key, l.key]))}
+            <small>+{l.percent}%</small>
+          </span>
+          <b>+{money(l.amount)}</b>
+        </div>
+      ))}
+    </div>
+  );
+}
 function GuideDetail(ctx) {
-  const { id, t, labels, search, navigate, user, message } = ctx,
+  const { id, t, labels, search, navigate, user, message, session } = ctx,
     { data: g, loading, error } = useLoad("/guides/" + id);
   const [note, setNote] = useState(""),
     [busy, setBusy] = useState(false),
     [failure, setFailure] = useState("");
+  const price = useQuote(g, search, session);
+  // The server refuses an on-site booking that runs past midnight. Saying so here,
+  // next to the price, beats letting someone fill the form and fail at submit.
+  const startMs = Date.parse(`${search.date}T${search.time}:00+09:00`);
+  const crossesMidnight =
+    search.mode !== "online" &&
+    new Date(startMs + 32400000).toISOString().slice(0, 10) !==
+      new Date(startMs + search.minutes * 60000 - 1 + 32400000)
+        .toISOString()
+        .slice(0, 10);
   async function book() {
     if (!user) {
       navigate(
@@ -1642,7 +1807,7 @@ function GuideDetail(ctx) {
         ...search,
         guideId: id,
         note,
-        expectedTotal: g.rate * search.hours,
+        expectedTotal: price.total,
       });
       message(t("预约申请已提交，等待随行翻译确认", "예약 신청 완료"));
       navigate("/orders/" + b.id);
@@ -1734,14 +1899,23 @@ function GuideDetail(ctx) {
               </div>
               <div className="summary-row">
                 <Clock3 size={17} />
-                {search.time} · {search.hours}
-                {t("小时 · 韩国时间", "시간 · 한국 시간")}
+                {search.time} · {duration(search.minutes, t)}
+                {t(" · 韩国时间", " · 한국 시간")}
               </div>
               <div className="summary-row">
-                <Users size={17} />
-                {search.adults}
-                {t("位成人", "명 성인")} · {search.children}
-                {t("位儿童", "명 어린이")}
+                {search.mode === "online" ? (
+                  <>
+                    <MessageCircle size={17} />
+                    {t("线上语音通话", "온라인 음성 통화")}
+                  </>
+                ) : (
+                  <>
+                    <Users size={17} />
+                    {search.adults}
+                    {t("位成人", "명 성인")} · {search.children}
+                    {t("位儿童", "명 어린이")}
+                  </>
+                )}
               </div>
               <div className="tags">
                 {search.purposes.map((p) => (
@@ -1759,19 +1933,54 @@ function GuideDetail(ctx) {
                   )}
                 />
               </Field>
+              <QuoteBreakdown price={price} t={t} />
               <div className="total-row">
                 <span>{t("服务总价", "총 서비스 요금")}</span>
-                <strong>{money(g.rate * search.hours)}</strong>
+                <strong>{money(price?.total || 0)}</strong>
               </div>
               <p className="muted small">
-                {t(
-                  "按团计费。门票、交通、餐饮等额外费用不包含在本次服务费中，需提前协商。",
-                  "그룹 기준. 입장료, 교통비, 식비는 별도 협의합니다.",
-                )}
+                {search.mode === "online"
+                  ? t(
+                      "线上语音仅含实时语音翻译，不含文件翻译，也不含线下到场。如需线下陪同请另行下单。",
+                      "온라인 음성은 실시간 통역만 포함하며, 문서 번역과 현장 방문은 포함되지 않습니다.",
+                    )
+                  : t(
+                      "按团计费。门票、交通、餐饮等额外费用不包含在本次服务费中，需提前协商。",
+                      "그룹 기준. 입장료, 교통비, 식비는 별도 협의합니다.",
+                    )}
               </p>
+              <p className="muted small">
+                {(() => {
+                  const terms = cancellationTerms({
+                    startMs: Date.parse(
+                      `${search.date}T${search.time}:00+09:00`,
+                    ),
+                    urgent: !!price?.urgent,
+                  });
+                  return terms.urgent
+                    ? t(
+                        "此单为紧急预约：取消不退预付款，但可免费改期一次。",
+                        "긴급 예약: 취소 시 환불되지 않으며, 1회 무료 변경이 가능합니다.",
+                      )
+                    : t(
+                        `现在取消可退 ${terms.refundPercent}%（扣除 ${terms.feePercent}% 调度费）。`,
+                        `지금 취소하면 ${terms.refundPercent}% 환불됩니다 (조정료 ${terms.feePercent}% 공제).`,
+                      );
+                })()}
+              </p>
+              {crossesMidnight && (
+                <div className="notice error">
+                  {t(
+                    "线下服务不能跨越午夜，请缩短时长或改到更早的时间。",
+                    "오프라인 서비스는 자정을 넘길 수 없습니다. 시간을 줄이거나 더 이른 시각으로 바꿔 주세요.",
+                  )}
+                </div>
+              )}
               {failure && <div className="notice error">{failure}</div>}
               <Button
-                disabled={busy || g.isDemo || user?.role === "guide"}
+                disabled={
+                  busy || crossesMidnight || g.isDemo || user?.role === "guide"
+                }
                 onClick={book}
               >
                 {busy ? "…" : t("提交预约申请", "예약 신청")}
@@ -1787,6 +1996,496 @@ function GuideDetail(ctx) {
           </div>
         )}
       </State>
+    </section>
+  );
+}
+// 译员列表. The search panel answers "who is free at 10am on Thursday", which needs a
+// date before it can answer anything. Someone who has just arrived on the site has no
+// date yet — they want to see who is here. Same approval gate, no clock.
+function Interpreters(ctx) {
+  const { t, labels, navigate, setSearch } = ctx;
+  const [filters, setFilters] = useState({
+    city: "",
+    level: "",
+    purposes: "",
+    mode: "",
+    sort: "recommended",
+  });
+  const query = new URLSearchParams(
+    Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+  ).toString();
+  const { data, loading, error } = useLoad(
+    "/interpreters" + (query ? "?" + query : ""),
+  );
+  const change = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
+  const list = data?.interpreters || [];
+  return (
+    <section className="page directory">
+      <div className="section-top">
+        <div>
+          <span className="eyebrow">OUR INTERPRETERS</span>
+          <h1>{t("译员列表", "통역사 목록")}</h1>
+          <p className="muted">
+            {t(
+              "平台审核通过的全部译员。等级由平台评定，时薪按等级公示；点开任意一位可以看到详细资料。",
+              "심사를 통과한 전체 통역사입니다. 등급은 플랫폼이 평가하며 시급은 등급에 따라 공시됩니다. 카드를 누르면 상세 정보를 볼 수 있습니다.",
+            )}
+          </p>
+        </div>
+      </div>
+      <div className="form-grid four directory-filters">
+        <Field label={t("城市", "도시")}>
+          <Select
+            value={filters.city}
+            onChange={(v) => change("city", v)}
+            options={{ "": t("全部城市", "전체 도시"), ...labels(cities) }}
+            groups={[
+              ["", [""]],
+              ...cityGroups.map(([label, keys]) => [t(...label), keys]),
+            ]}
+          />
+        </Field>
+        <Field label={t("服务场景", "서비스 상황")}>
+          <Select
+            value={filters.purposes}
+            onChange={(v) => change("purposes", v)}
+            options={{ "": t("全部场景", "전체"), ...labels(purposes) }}
+          />
+        </Field>
+        <Field label={t("译员等级", "통역사 등급")}>
+          <Select
+            value={filters.level}
+            onChange={(v) => change("level", v)}
+            options={{
+              "": t("全部等级", "전체 등급"),
+              ...Object.fromEntries(
+                LEVEL_KEYS.map((k) => [
+                  k,
+                  `${k} · ${t(LEVELS[k].zh, LEVELS[k].ko)}`,
+                ]),
+              ),
+            }}
+          />
+        </Field>
+        <Field label={t("排序", "정렬")}>
+          <Select
+            value={filters.sort}
+            onChange={(v) => change("sort", v)}
+            options={{
+              recommended: t("综合推荐", "추천순"),
+              services: t("服务次数最多", "서비스 횟수순"),
+              price: t("时薪由低到高", "시급 낮은 순"),
+            }}
+          />
+        </Field>
+      </div>
+      <State loading={loading} error={error} empty={!list.length}>
+        <p className="muted small">
+          {t(`共 ${data?.total || 0} 位译员`, `총 ${data?.total || 0}명`)}
+        </p>
+        <div className="directory-grid">
+          {list.map((g) => (
+            <InterpreterCard
+              key={g.id}
+              g={g}
+              t={t}
+              labels={labels}
+              onOpen={() => {
+                // Carry the chosen city and scene into the booking search so the
+                // detail page quotes against something sensible rather than a blank.
+                setSearch((sch) => ({
+                  ...sch,
+                  city: g.city,
+                  purposes: sch.purposes.length
+                    ? sch.purposes
+                    : [g.purposes[0]],
+                }));
+                navigate("/guides/" + g.id);
+              }}
+            />
+          ))}
+        </div>
+      </State>
+    </section>
+  );
+}
+function LevelTag({ g, t }) {
+  if (!g.level) return null;
+  return (
+    <span className={`level-tag ${g.level.toLowerCase()}`}>
+      <Award size={13} />
+      {g.level} · {t(LEVELS[g.level]?.zh || "", LEVELS[g.level]?.ko || "")}
+    </span>
+  );
+}
+function InterpreterCard({ g, t, labels, onOpen }) {
+  return (
+    <article className="interpreter-card">
+      <button className="interpreter-open" onClick={onOpen}>
+        <div className="interpreter-head">
+          <Avatar src={g.image} name={g.name} />
+          <div className="interpreter-id">
+            <h3>{g.name}</h3>
+            <LevelTag g={g} t={t} />
+            <p className="muted small">
+              <MapPin size={13} />
+              {labels(cities)[g.city]} · {g.languages}
+            </p>
+          </div>
+        </div>
+        <div className="interpreter-stats">
+          <div>
+            <small>{t("评分", "평점")}</small>
+            <strong>
+              <Star size={13} />
+              {g.rating ? g.rating.toFixed(1) : t("新入驻", "신규")}
+            </strong>
+          </div>
+          <div>
+            <small>{t("服务次数", "서비스 횟수")}</small>
+            <strong>{g.serviceCount}</strong>
+          </div>
+          <div>
+            <small>{t("小时价格", "시간당 가격")}</small>
+            <strong>{money(g.rate)}</strong>
+          </div>
+        </div>
+        <p className="bio-short">{g.bio}</p>
+        <div className="tags">
+          {g.purposes.map((p) => (
+            <span key={p}>{labels(purposes)[p]}</span>
+          ))}
+        </div>
+        <div className="interpreter-foot">
+          <span className="mode-chip">
+            <Users size={13} />
+            {t("线下一对一", "오프라인 1:1")}
+          </span>
+          {g.offersOnline && (
+            <span className="mode-chip">
+              <MessageCircle size={13} />
+              {t("线上语音", "온라인 음성")}
+            </span>
+          )}
+          <span className="interpreter-more">
+            {t("查看详情", "자세히 보기")}
+            <ArrowUpRight size={16} />
+          </span>
+        </div>
+      </button>
+    </article>
+  );
+}
+// 帮助中心. 《客户预订与服务方案》 written out for the customer, with the numbers read
+// from the live settings rather than retyped — if the admin retunes a surcharge, this
+// page changes with it instead of quietly becoming wrong.
+function Help(ctx) {
+  const { t, session, navigate } = ctx;
+  const cfg = { ...PRICING_DEFAULTS, ...(session?.pricing || {}) };
+  const rates = session?.levelRates || {};
+  const hhmm = (m) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+  const Section = ({ icon: Icon, title, children }) => (
+    <section className="help-block">
+      <h2>
+        <Icon size={19} />
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+  const Table = ({ head, rows }) => (
+    <div className="help-table">
+      <table>
+        <thead>
+          <tr>
+            {head.map((h) => (
+              <th key={h}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((c, j) => (
+                <td key={j}>{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <section className="page help">
+      <div className="section-top">
+        <div>
+          <span className="eyebrow">HELP CENTRE</span>
+          <h1>{t("帮助中心", "도움말 센터")}</h1>
+          <p className="muted">
+            {t(
+              "预约方式、计费规则、取消与改期，以及线上语音服务的全部说明。所有时间均为韩国时间。",
+              "예약 방법, 요금 규정, 취소·변경, 온라인 음성 서비스 안내입니다. 모든 시간은 한국 시간 기준입니다.",
+            )}
+          </p>
+        </div>
+      </div>
+
+      <Section icon={LifeBuoy} title={t("两种服务模式", "두 가지 서비스 방식")}>
+        <Table
+          head={[
+            t("模式", "방식"),
+            t("适用场景", "이용 상황"),
+            t("服务形式", "서비스 형태"),
+            t("价格", "요금"),
+          ]}
+          rows={[
+            [
+              <b key="a">{t("线下一对一", "오프라인 1:1")}</b>,
+              t(
+                "医院就诊、行政办理、看房租房、商务拜访等需要到场的场景",
+                "병원 진료, 행정 처리, 부동산, 비즈니스 방문 등 현장이 필요한 상황",
+              ),
+              t("译员到现场，全程翻译", "통역사가 현장에서 전 과정 통역"),
+              t("标准价格", "표준 요금"),
+            ],
+            [
+              <b key="b">{t("线上语音通话", "온라인 음성 통화")}</b>,
+              t(
+                "简单咨询、电话沟通、远程确认，或不便到场、预算有限时",
+                "간단한 문의, 전화 소통, 원격 확인, 방문이 어렵거나 예산이 제한적일 때",
+              ),
+              t("通过平台语音通话实时翻译", "플랫폼 음성 통화로 실시간 통역"),
+              t(
+                `线下价格的 ${cfg.onlinePercent}%`,
+                `오프라인 요금의 ${cfg.onlinePercent}%`,
+              ),
+            ],
+          ]}
+        />
+        <p className="help-note">
+          {t(
+            "线上语音仅包含实时语音翻译，不含文件翻译，也不含线下到场。若后续需要线下陪同，须另行下单，已产生的线上费用不抵扣线下费用。",
+            "온라인 음성은 실시간 통역만 포함하며 문서 번역과 현장 방문은 포함되지 않습니다. 이후 현장 동행이 필요하면 별도로 예약해야 하며, 이미 발생한 온라인 요금은 공제되지 않습니다.",
+          )}
+        </p>
+      </Section>
+
+      <Section icon={Award} title={t("译员等级与时薪", "통역사 등급과 시급")}>
+        <p>
+          {t(
+            "每位译员由平台审核评级，时薪按等级公示。专业场景的加成也与等级有关。",
+            "모든 통역사는 플랫폼 심사를 거쳐 등급이 정해지며, 시급은 등급에 따라 공시됩니다.",
+          )}
+        </p>
+        <Table
+          head={[
+            t("等级", "등급"),
+            t("称谓", "명칭"),
+            t("标准时薪", "표준 시급"),
+          ]}
+          rows={LEVEL_KEYS.map((k) => [
+            <b key={k}>{k}</b>,
+            t(LEVELS[k].zh, LEVELS[k].ko),
+            money(rates[k] ?? LEVELS[k].rate) + t("/小时", "/시간"),
+          ])}
+        />
+        <p className="help-note">
+          {t(
+            "个别译员的实际时薪可能由平台单独核定，以译员页面显示的价格为准。",
+            "개별 통역사의 실제 시급은 플랫폼이 따로 정할 수 있으며, 프로필에 표시된 가격이 기준입니다.",
+          )}
+        </p>
+      </Section>
+
+      <Section
+        icon={Timer}
+        title={t("预约时间与紧急单", "예약 시간과 긴급 예약")}
+      >
+        <ul className="help-list">
+          <li>
+            {t(
+              `常规预约：下单时预约时间须至少提前 ${cfg.urgentHours} 小时，按标准时薪计费，无额外加成。`,
+              `일반 예약: 서비스 시작 ${cfg.urgentHours}시간 전까지 예약해야 하며, 표준 시급으로 추가 할증 없이 청구됩니다.`,
+            )}
+          </li>
+          <li>
+            {t(
+              `紧急预约：预约时间在 ${cfg.urgentHours} 小时以内的订单为紧急单，加收 ${cfg.urgentPercent}% 紧急服务费。紧急单优先派单，但不保证一定能匹配到译员；若无人接单将自动退款。`,
+              `긴급 예약: 시작까지 ${cfg.urgentHours}시간 미만이면 긴급 예약으로 ${cfg.urgentPercent}% 할증이 붙습니다. 우선 배정되지만 매칭을 보장하지는 않으며, 수락한 통역사가 없으면 자동 환불됩니다.`,
+            )}
+          </li>
+        </ul>
+      </Section>
+
+      <Section icon={Wallet} title={t("计费规则", "요금 규정")}>
+        <ul className="help-list">
+          <li>
+            <b>{t("最低计费时长", "최소 과금 시간")}</b>：
+            {t(
+              `线下每单最低按 ${cfg.minOnsiteMinutes / 60} 小时计费；线上语音每单最低按 ${cfg.minOnlineMinutes} 分钟计费。`,
+              `오프라인은 최소 ${cfg.minOnsiteMinutes / 60}시간, 온라인 음성은 최소 ${cfg.minOnlineMinutes}분부터 청구됩니다.`,
+            )}
+          </li>
+          <li>
+            <b>{t("超时计费", "초과 시간")}</b>：
+            {t(
+              "超出预约时长的部分，按时薪以实际分钟数累计；若超时跨越夜间或节假日，按相应加成另行计算。",
+              "예약 시간을 초과한 부분은 시급 기준으로 실제 분 단위로 가산되며, 야간·공휴일에 걸치면 해당 할증이 따로 적용됩니다.",
+            )}
+          </li>
+          <li>
+            <b>{t("时段加成", "시간대 할증")}</b>：
+            {t(
+              `${hhmm(cfg.nightFromMinute)} 以后开始的服务加收 ${cfg.nightPercent}%；周末及法定节假日加收 ${cfg.weekendPercent}%。紧急加成与时段加成可叠加。`,
+              `${hhmm(cfg.nightFromMinute)} 이후 시작하면 ${cfg.nightPercent}%, 주말·공휴일은 ${cfg.weekendPercent}% 할증입니다. 긴급 할증과 중복 적용됩니다.`,
+            )}
+          </li>
+          <li>
+            <b>{t("场景加成", "상황 할증")}</b>：
+            {t(
+              "涉及医疗、医美、商务谈判等专业场景，按译员等级和场景复杂度加收 20%–50%。",
+              "의료, 미용·성형, 비즈니스 협상 등 전문 상황은 통역사 등급과 난이도에 따라 20%–50% 할증됩니다.",
+            )}
+          </li>
+        </ul>
+        <p className="help-note">
+          {t(
+            "下单前的页面会把每一项加成单独列出，你看到的总价就是支付的总价。",
+            "예약 전 화면에 모든 할증 항목이 따로 표시되며, 보이는 금액이 결제 금액입니다.",
+          )}
+        </p>
+      </Section>
+
+      <Section icon={CalendarDays} title={t("预订流程", "예약 절차")}>
+        <ol className="help-steps">
+          {[
+            t("选择服务模式", "서비스 방식 선택"),
+            t("选择城市与场景", "도시·상황 선택"),
+            t("选择日期与时长", "날짜·시간 선택"),
+            t("查看报价明细", "요금 내역 확인"),
+            t("提交预约申请", "예약 신청"),
+            t("译员确认后付款", "통역사 수락 후 결제"),
+            t("服务开始", "서비스 시작"),
+            t("结束后结算", "종료 후 정산"),
+          ].map((step, i) => (
+            <li key={i}>
+              <span>{String(i + 1).padStart(2, "0")}</span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      <Section icon={AlertTriangle} title={t("取消与改期", "취소와 일정 변경")}>
+        <Table
+          head={[t("情形", "상황"), t("处理方式", "처리 방식")]}
+          rows={[
+            [
+              t("提前 24 小时以上取消", "24시간 이전 취소"),
+              t("全额退款", "전액 환불"),
+            ],
+            [
+              t("提前 3–24 小时取消", "3–24시간 전 취소"),
+              t("退还 80%，扣除 20% 调度费", "80% 환불, 조정료 20% 공제"),
+            ],
+            [
+              t("提前 3 小时以内取消", "3시간 이내 취소"),
+              t("退还 50%，扣除 50% 调度费", "50% 환불, 조정료 50% 공제"),
+            ],
+            [
+              t("紧急单取消", "긴급 예약 취소"),
+              t("不退预付款，但可改期一次", "환불 불가, 1회 일정 변경 가능"),
+            ],
+            [
+              t("译员迟到超过 30 分钟", "통역사가 30분 이상 지각"),
+              t("可免费改期或全额退款", "무료 일정 변경 또는 전액 환불"),
+            ],
+          ]}
+        />
+        <p className="help-note">
+          {t(
+            "订单页面会显示现在取消能退多少。已付款订单的退款由平台人工核对后原路退回。",
+            "주문 화면에 지금 취소할 경우의 환불 금액이 표시됩니다. 결제가 완료된 주문은 플랫폼 확인 후 원결제 수단으로 환불됩니다.",
+          )}
+        </p>
+      </Section>
+
+      <Section
+        icon={PhoneCall}
+        title={t("线上语音服务说明", "온라인 음성 서비스 안내")}
+      >
+        <ul className="help-list">
+          <li>
+            {t(
+              "仅限语音翻译：不包含线下到场、文件翻译，以及代打电话以外的代办服务。",
+              "음성 통역 전용: 현장 방문, 문서 번역, 대리 전화 외의 대행 업무는 포함되지 않습니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "通话质量：请保证网络稳定；因客户网络问题导致通话中断，已发生时长照常计费。",
+              "통화 품질: 안정적인 네트워크가 필요하며, 고객 측 문제로 통화가 끊긴 경우 이미 사용한 시간은 그대로 청구됩니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "隐私保护：通话内容受平台保密规则约束，译员不得录音、截图或外传。",
+              "개인정보 보호: 통화 내용은 플랫폼 비밀유지 규정의 적용을 받으며, 통역사는 녹음·캡처·외부 공유를 할 수 없습니다.",
+            )}
+          </li>
+        </ul>
+      </Section>
+
+      <Section icon={ShieldCheck} title={t("客户须知", "이용자 안내")}>
+        <ul className="help-list">
+          <li>
+            {t(
+              "请如实填写服务场景、地点和语种需求，以便匹配合适的译员。",
+              "적합한 통역사를 배정할 수 있도록 상황, 장소, 언어를 정확히 입력해 주세요.",
+            )}
+          </li>
+          <li>
+            {t(
+              "涉及医疗、法律、合同签署等专业事项，译员仅提供语言翻译，不提供专业建议。",
+              "의료, 법률, 계약 등 전문 사안에서 통역사는 언어 통역만 제공하며 전문적인 조언은 하지 않습니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "译员交通费用已综合在定价中，无需另付餐费或交通费，除非订单页面明确标注。",
+              "통역사의 교통비는 요금에 포함되어 있으며, 주문 화면에 명시되지 않는 한 식비·교통비를 따로 지불할 필요가 없습니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "请勿绕过平台与译员私下交易，否则平台无法提供售后保障。",
+              "플랫폼을 거치지 않고 통역사와 직접 거래하면 사후 보장을 받을 수 없습니다.",
+            )}
+          </li>
+          <li>
+            {t(
+              "如对服务不满意，可在服务结束后 24 小时内提交反馈，平台将核实处理。",
+              "서비스에 만족하지 못한 경우 종료 후 24시간 이내에 의견을 보내 주시면 플랫폼이 확인 후 처리합니다.",
+            )}
+          </li>
+        </ul>
+      </Section>
+
+      <div className="help-foot">
+        <Button onClick={() => navigate("/interpreters")}>
+          {t("浏览译员列表", "통역사 목록 보기")}
+          <ArrowRight size={17} />
+        </Button>
+        <button className="text-button" onClick={() => navigate("/terms")}>
+          {t("服务条款", "서비스 이용약관")}
+        </button>
+        <button className="text-button" onClick={() => navigate("/refund")}>
+          {t("取消与退款政策", "취소 및 환불 정책")}
+        </button>
+      </div>
     </section>
   );
 }
@@ -2713,6 +3412,50 @@ function GuideWorkspace(ctx) {
           </div>
         )}
       </div>
+      {/* Registering is not the same as being on the platform, and an interpreter
+          waiting on review should be told so plainly rather than wondering why no
+          booking ever arrives. */}
+      {profile && profile.status !== "approved" && (
+        <div className="notice error review-state">
+          <b>
+            {profile.status === "pending"
+              ? t("资料审核中", "프로필 심사 중")
+              : profile.status === "needs_changes"
+                ? t("资料需要补充", "프로필 보완 필요")
+                : profile.status === "suspended"
+                  ? t("资料已下架", "노출 중단됨")
+                  : t("申请未通过", "신청이 승인되지 않았습니다")}
+          </b>
+          <span>
+            {t(
+              "在平台审核通过之前，客户搜索和译员列表里都不会出现你，也不会收到预约。",
+              "심사가 완료되기 전에는 고객 검색과 통역사 목록에 노출되지 않으며 예약도 받을 수 없습니다.",
+            )}
+          </span>
+          {profile.reviewNote && (
+            <span>
+              {t("审核意见：", "심사 의견: ")}
+              {profile.reviewNote}
+            </span>
+          )}
+        </div>
+      )}
+      {profile?.status === "approved" && (
+        <div className="notice review-state ok">
+          <b>
+            {t("已上架", "노출 중")}
+            {profile.level
+              ? ` · ${profile.level} ${t(LEVELS[profile.level]?.zh || "", LEVELS[profile.level]?.ko || "")}`
+              : ""}
+          </b>
+          <span>
+            {t(
+              `客户看到的时薪为 ${money(profile.rate)}/小时，由平台按等级核定；你填写的期望时薪为 ${money(profile.askingRate || 0)}/小时。`,
+              `고객에게 표시되는 시급은 ${money(profile.rate)}/시간이며 플랫폼이 등급에 따라 정합니다. 신청하신 희망 시급은 ${money(profile.askingRate || 0)}/시간입니다.`,
+            )}
+          </span>
+        </div>
+      )}
       <div className="tabs">
         {[
           ["profile", "个人资料", "프로필"],
@@ -2772,10 +3515,13 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
       className="panel form-wide"
       onSubmit={(e) => {
         e.preventDefault();
+        const form = Object.fromEntries(new FormData(e.currentTarget));
         onSubmit({
-          ...Object.fromEntries(new FormData(e.currentTarget)),
+          ...form,
           purposes: ps,
           pledge: true,
+          // An unchecked checkbox is simply absent from FormData.
+          offersOnline: form.offersOnline === "on",
         });
       }}
     >
@@ -2823,19 +3569,22 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
           </select>
         </Field>
         <Field
-          label={t(
-            "每小时价格（人民币，按团）",
-            "시간당 가격 (그룹 기준, 위안)",
-          )}
+          label={t("期望时薪（人民币，按团）", "희망 시급 (그룹 기준, 위안)")}
         >
           <input
             name="rate"
             type="number"
             min="50"
             max="5000"
-            defaultValue={p?.rate || 300}
+            defaultValue={p?.askingRate || p?.rate || 300}
             required
           />
+          <small className="field-note">
+            {t(
+              "这是你的期望价。实际对客价由平台在审核时按等级核定，核定后会在工作台显示。",
+              "희망 가격입니다. 고객에게 적용되는 실제 가격은 심사 시 플랫폼이 등급에 따라 정하며, 확정되면 관리 화면에 표시됩니다.",
+            )}
+          </small>
         </Field>
         <Field label={t("最多接待人数（含儿童）", "최대 인원 (어린이 포함)")}>
           <input
@@ -2848,6 +3597,22 @@ function ProfileForm({ profile: p, t, labels, onSubmit, busy }) {
           />
         </Field>
       </div>
+      <label className="checkline">
+        <input
+          type="checkbox"
+          name="offersOnline"
+          defaultChecked={p ? p.offersOnline !== false : true}
+        />
+        <span>
+          <b>{t("同时接受线上语音通话订单", "온라인 음성 통화 예약도 수락")}</b>
+          <small>
+            {t(
+              "线上语音按线下价格的一半计费，最低 10 分钟起；不勾选则只接线下订单。",
+              "온라인 음성은 오프라인 요금의 절반, 최소 10분부터입니다. 선택하지 않으면 오프라인 예약만 받습니다.",
+            )}
+          </small>
+        </span>
+      </label>
       <p className="label">{t("可承接的服务场景", "가능 서비스 상황")}</p>
       <PurposePicker value={ps} onChange={setPs} t={t} />
       <Field label={t("自我介绍及具体服务范围", "소개 및 구체적 서비스 범위")}>
@@ -3292,9 +4057,32 @@ function AdminStats({ revision, t }) {
 }
 function AdminGuides({ revision, save, busy, user, t }) {
   const { data, loading, error } = useLoad("/admin/guides", revision);
+  const pending = (data || []).filter((g) => g.status === "pending");
+  // An application that nobody notices is an interpreter who never gets on the
+  // platform, so the queue is stated at the top and pending profiles sort first.
+  const ordered = [...(data || [])].sort(
+    (a, b) =>
+      (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1),
+  );
   return (
     <State loading={loading} error={error} empty={data?.length === 0}>
-      {data?.map((g) => (
+      <div className={pending.length ? "review-queue waiting" : "review-queue"}>
+        <b>
+          {pending.length
+            ? t(
+                `${pending.length} 份资料等待审核`,
+                `심사 대기 ${pending.length}건`,
+              )
+            : t("没有待审核的资料", "심사 대기 없음")}
+        </b>
+        <span>
+          {t(
+            "只有「批准上架」的译员才会出现在客户的搜索和译员列表里；注册本身不会让任何人上架。",
+            "「승인」된 통역사만 고객 검색과 통역사 목록에 노출됩니다. 가입만으로는 노출되지 않습니다.",
+          )}
+        </span>
+      </div>
+      {ordered.map((g) => (
         <div className="panel" key={g.id}>
           <div className="row">
             <div className="person">
@@ -3302,7 +4090,12 @@ function AdminGuides({ revision, save, busy, user, t }) {
               <div>
                 <h3>{g.name}</h3>
                 <p>
-                  {cities[g.city][0]} · {g.languages} · {money(g.rate)}/小时
+                  {cities[g.city][0]} · {g.languages}
+                  {g.level ? ` · ${g.level} ${LEVELS[g.level]?.zh || ""}` : ""}
+                  {g.rate
+                    ? ` · 现价 ${money(g.rate)}/小时`
+                    : ` · ${t("尚未定价", "가격 미정")}`}
+                  {g.askingRate ? ` · 申请 ${money(g.askingRate)}/小时` : ""}
                 </p>
               </div>
             </div>
@@ -3334,7 +4127,7 @@ function AdminGuides({ revision, save, busy, user, t }) {
               }}
             >
               <Field label={t("处理结果", "처리 결과")}>
-                <select name="status">
+                <select name="status" defaultValue="approved">
                   <option value="approved">{t("批准上架", "승인")}</option>
                   <option value="needs_changes">
                     {t("退回补充资料", "보완 요청")}
@@ -3342,6 +4135,37 @@ function AdminGuides({ revision, save, busy, user, t }) {
                   <option value="rejected">{t("拒绝申请", "신청 거절")}</option>
                   <option value="suspended">{t("下架", "노출 중단")}</option>
                 </select>
+              </Field>
+              <Field
+                label={t(
+                  "译员等级（批准上架必填）",
+                  "통역사 등급 (승인 시 필수)",
+                )}
+              >
+                <select name="level" defaultValue={g.level || ""}>
+                  <option value="">{t("— 请选择 —", "— 선택 —")}</option>
+                  {LEVEL_KEYS.map((k) => (
+                    <option key={k} value={k}>
+                      {k} · {t(LEVELS[k].zh, LEVELS[k].ko)} ·{" "}
+                      {money(LEVELS[k].rate)}
+                      {t("/小时", "/시간")}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field
+                label={t(
+                  "时薪（留空＝采用该等级的标准时薪）",
+                  "시급 (비워 두면 해당 등급의 표준 시급)",
+                )}
+              >
+                <input
+                  name="rate"
+                  type="number"
+                  min="50"
+                  max="5000"
+                  placeholder={t("按等级标准时薪", "등급 표준 시급")}
+                />
               </Field>
               <Field label={t("审核意见 / 原因", "심사 의견 / 사유")}>
                 <input

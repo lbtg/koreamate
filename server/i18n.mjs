@@ -6,9 +6,11 @@
 // tests/i18n.test.mjs reads the server sources and fails when a literal has no entry
 // here. Adding or changing a message means adding or changing its line below.
 
-export const KO = {  城市无效: "도시가 올바르지 않습니다",
+export const KO = {
+  城市无效: "도시가 올바르지 않습니다",
   服务类别无效: "서비스 분류가 올바르지 않습니다",
-  该译员暂不提供线上语音服务: "이 통역사는 현재 온라인 음성 서비스를 제공하지 않습니다",
+  该译员暂不提供线上语音服务:
+    "이 통역사는 현재 온라인 음성 서비스를 제공하지 않습니다",
   "请先为该译员评定等级（L1–L5）后再通过审核":
     "승인 전에 통역사 등급(L1–L5)을 먼저 지정해 주세요",
 

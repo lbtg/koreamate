@@ -139,7 +139,8 @@ export function quote({
 
   // 时段加成. Night is decided by the start time, as the document words it
   // (「22:00以后开始的服务」), not by whether the booking runs past 22:00.
-  if (kstMinute(startMs) >= cfg.nightFromMinute) add("night", pct(cfg.nightPercent));
+  if (kstMinute(startMs) >= cfg.nightFromMinute)
+    add("night", pct(cfg.nightPercent));
 
   const date = kstDate(startMs);
   const weekday = kstWeekday(startMs);
@@ -149,9 +150,15 @@ export function quote({
 
   // 场景加成: the heaviest selected scene decides it. Adding the scenes together would
   // punish a customer for describing their day honestly.
-  const sceneBase = purposes.reduce((m, p) => Math.max(m, SCENE_LOAD[p] ?? 0), 0);
+  const sceneBase = purposes.reduce(
+    (m, p) => Math.max(m, SCENE_LOAD[p] ?? 0),
+    0,
+  );
   if (sceneBase > 0) {
-    const scene = Math.min(SCENE_LOAD_CAP, sceneBase + (LEVEL_LOAD[level] ?? 0));
+    const scene = Math.min(
+      SCENE_LOAD_CAP,
+      sceneBase + (LEVEL_LOAD[level] ?? 0),
+    );
     add("scene", scene);
   }
 
@@ -176,15 +183,30 @@ export const CANCELLATION = [
   { minHours: 0, refundPercent: 50, feePercent: 50 },
 ];
 // 「紧急单取消：不退预付款，但可改期一次」.
-export const URGENT_CANCELLATION = { refundPercent: 0, feePercent: 100, reschedules: 1 };
+export const URGENT_CANCELLATION = {
+  refundPercent: 0,
+  feePercent: 100,
+  reschedules: 1,
+};
 // 「译员迟到超过30分钟：客户可选择免费改期或全额退款」.
 export const LATE_GRACE_MINUTES = 30;
 
 /** What a customer gets back if they cancel now. */
-export function cancellationTerms({ startMs, nowMs = Date.now(), urgent = false }) {
-  if (urgent) return { ...URGENT_CANCELLATION, urgent: true, hoursAhead: (startMs - nowMs) / 3600000 };
+export function cancellationTerms({
+  startMs,
+  nowMs = Date.now(),
+  urgent = false,
+}) {
+  if (urgent)
+    return {
+      ...URGENT_CANCELLATION,
+      urgent: true,
+      hoursAhead: (startMs - nowMs) / 3600000,
+    };
   const hoursAhead = (startMs - nowMs) / 3600000;
-  const band = CANCELLATION.find((b) => hoursAhead >= b.minHours) || CANCELLATION[CANCELLATION.length - 1];
+  const band =
+    CANCELLATION.find((b) => hoursAhead >= b.minHours) ||
+    CANCELLATION[CANCELLATION.length - 1];
   return { ...band, urgent: false, hoursAhead };
 }
 

@@ -2492,3 +2492,368 @@ footer {
     animation: none;
   }
 }
+
+/* ─── 两种服务模式 ─────────────────────────────────────────────────────────────
+   The mode decides the price base, the minimum duration and whether party size
+   applies, so it reads as a choice above the form rather than one field inside it. */
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.mode-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "icon title" "icon note";
+  gap: 1px 11px;
+  align-items: center;
+  text-align: left;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+.mode-option > svg {
+  grid-area: icon;
+  color: var(--muted);
+}
+.mode-option b {
+  grid-area: title;
+  font-size: 15px;
+}
+.mode-option small {
+  grid-area: note;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.mode-option.on {
+  border-color: var(--green);
+  background: #fff;
+  box-shadow: 0 1px 0 var(--green) inset;
+}
+.mode-option.on > svg {
+  color: var(--orange);
+}
+@media (max-width: 620px) {
+  .mode-switch {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── 报价明细 ────────────────────────────────────────────────────────────────
+   Every surcharge gets its own line. The customer should never meet a number at
+   checkout they cannot account for. */
+.quote {
+  margin: 16px 0 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.quote-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 5px 0;
+  font-size: 14.5px;
+}
+.quote-row span {
+  display: flex;
+  flex-direction: column;
+}
+.quote-row small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.quote-row.surcharge b {
+  color: var(--orange);
+}
+.quote-note {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ─── 译员列表 ────────────────────────────────────────────────────────────────── */
+.directory-filters {
+  margin: 8px 0 22px;
+}
+.form-grid.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+.directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 14px;
+}
+.interpreter-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.interpreter-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(23, 58, 50, 0.1);
+}
+/* The whole card is the link, so a keyboard reaches it in one stop instead of four. */
+.interpreter-open {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 20px;
+  background: none;
+  border: 0;
+}
+.interpreter-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.interpreter-id h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.interpreter-id p {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 0 0;
+}
+.level-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #efe7dd;
+  color: #8a5a33;
+}
+.level-tag.l4,
+.level-tag.l5 {
+  background: var(--green);
+  color: #f3e7d6;
+}
+.interpreter-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.interpreter-stats small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.interpreter-stats strong {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 16px;
+}
+.interpreter-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.interpreter-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--orange);
+}
+@media (max-width: 620px) {
+  .form-grid.four {
+    grid-template-columns: 1fr 1fr;
+  }
+  .directory-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── 帮助中心 ────────────────────────────────────────────────────────────────── */
+.help {
+  max-width: 880px;
+}
+.help-block {
+  margin: 34px 0;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+.help-block h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 21px;
+}
+.help-block h2 svg {
+  color: var(--orange);
+  flex: none;
+}
+.help-table {
+  overflow-x: auto;
+  margin: 14px 0;
+}
+.help-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  min-width: 440px;
+}
+.help-table th,
+.help-table td {
+  text-align: left;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.help-table th {
+  font-size: 12.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.help-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.6);
+}
+.help-list {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+.help-list li {
+  margin: 9px 0;
+}
+.help-note {
+  margin: 12px 0 0;
+  padding: 12px 15px;
+  border-left: 3px solid var(--orange);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  color: var(--muted);
+}
+.help-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+.help-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 14.5px;
+}
+.help-steps span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+}
+.help-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 34px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+/* A review queue nobody notices is an interpreter who never gets on the platform. */
+.review-queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+}
+.review-queue.waiting {
+  border-color: var(--orange);
+  background: #fdf3ec;
+}
+.review-queue span {
+  color: var(--muted);
+}
+.review-state {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 18px;
+}
+.review-state.ok {
+  border-left: 3px solid var(--green);
+}
+
+.field-note {
+  display: block;
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.checkline {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+}
+.checkline input {
+  margin-top: 4px;
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+.checkline span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.checkline small {
+  font-size: 12.5px;
+  color: var(--muted);
+}

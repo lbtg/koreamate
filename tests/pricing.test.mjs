@@ -84,7 +84,10 @@ test("minimum billable duration, time-of-day and scene loading", () => {
   // 「22:00以后开始的服务：加收20%」 — decided by the start time.
   const night = at("22:30");
   assert.ok(night.lines.some((l) => l.key === "night" && l.percent === 20));
-  assert.equal(at("21:30").lines.some((l) => l.key === "night"), false);
+  assert.equal(
+    at("21:30").lines.some((l) => l.key === "night"),
+    false,
+  );
 
   // 「周末及法定节假日：加收15%」.
   const sunday = quote({
@@ -103,9 +106,13 @@ test("minimum billable duration, time-of-day and scene loading", () => {
     purposes: [],
     startMs: MONDAY_10,
     nowMs: far,
-    settings: { holidays: [new Date(MONDAY_10 + 32400000).toISOString().slice(0, 10)] },
+    settings: {
+      holidays: [new Date(MONDAY_10 + 32400000).toISOString().slice(0, 10)],
+    },
   });
-  assert.ok(holiday.lines.some((l) => l.key === "weekend" && l.holiday === true));
+  assert.ok(
+    holiday.lines.some((l) => l.key === "weekend" && l.holiday === true),
+  );
 
   // 「涉及医疗…根据译员等级和场景复杂度加收20%–50%」, never above 50%, and the
   // heaviest selected scene decides it rather than the sum.
@@ -133,7 +140,11 @@ test("minimum billable duration, time-of-day and scene loading", () => {
 test("cancellation bands match 六、取消与改期规则", () => {
   const start = MONDAY_10;
   const at = (hoursAhead, urgent = false) =>
-    cancellationTerms({ startMs: start, nowMs: start - hoursAhead * 3600000, urgent });
+    cancellationTerms({
+      startMs: start,
+      nowMs: start - hoursAhead * 3600000,
+      urgent,
+    });
 
   assert.equal(at(48).refundPercent, 100); // 提前24小时以上：全额退款
   assert.equal(at(12).refundPercent, 80); // 提前3–24小时：退80%
@@ -156,10 +167,15 @@ function client() {
   return async (path, method = "GET", data, expected = 200) => {
     const r = await fetch(base + "/api" + path, {
       method,
-      headers: { "Content-Type": "application/json", Cookie: cookie, "X-CSRF-Token": csrf },
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        "X-CSRF-Token": csrf,
+      },
       ...(data ? { body: JSON.stringify(data) } : {}),
     });
-    if (r.headers.get("set-cookie")) cookie = r.headers.get("set-cookie").split(";")[0];
+    if (r.headers.get("set-cookie"))
+      cookie = r.headers.get("set-cookie").split(";")[0];
     const result = await r.json();
     assert.equal(r.status, expected, JSON.stringify({ path, result }));
     if (result.csrf) csrf = result.csrf;
@@ -175,14 +191,21 @@ const date = (() => {
 
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), "km-pricing-"));
-  app = createApp({ dbPath: join(dir, "db.sqlite"), secure: false, manualPayments: true });
+  app = createApp({
+    dbPath: join(dir, "db.sqlite"),
+    secure: false,
+    manualPayments: true,
+  });
   app.createUser("admin@pricing.test", password, "Admin", "admin");
   await new Promise((r) => app.server.listen(0, "127.0.0.1", r));
   base = "http://127.0.0.1:" + app.server.address().port;
   admin = client();
   guide = client();
   guest = client();
-  await admin("/admin/login", "POST", { email: "admin@pricing.test", password });
+  await admin("/admin/login", "POST", {
+    email: "admin@pricing.test",
+    password,
+  });
   await guide("/register", "POST", {
     email: "guide@pricing.test",
     password,
@@ -320,7 +343,11 @@ test("the server charges the document's rules, not the client's number", async (
   assert.equal(order.cancellation.refundPercent, 100);
 
   // A medical booking carries the professional-scene loading.
-  const med = await guest("/bookings", "POST", book({ time: "13:00", purposes: ["medical"] }));
+  const med = await guest(
+    "/bookings",
+    "POST",
+    book({ time: "13:00", purposes: ["medical"] }),
+  );
   const medOrder = await guest("/bookings/" + med.id);
   assert.equal(medOrder.total, Math.round(L3 * 2 * 1.3));
   assert.ok(medOrder.breakdown.lines.some((l) => l.key === "scene"));
@@ -341,7 +368,11 @@ test("a booking inside the lead time is urgent and is surcharged", async () => {
   const soon = new Date(Date.now() + 2 * 3600000 + 32400000);
   const soonDate = soon.toISOString().slice(0, 10);
   const soonTime = soon.toISOString().slice(11, 16);
-  await guide("/guide/availability", "POST", { date: soonDate, start: 0, end: 1440 });
+  await guide("/guide/availability", "POST", {
+    date: soonDate,
+    start: 0,
+    end: 1440,
+  });
 
   const r = await guest("/bookings", "POST", {
     guideId: gid,
@@ -354,7 +385,9 @@ test("a booking inside the lead time is urgent and is surcharged", async () => {
   });
   const order = await guest("/bookings/" + r.id);
   assert.equal(order.urgent, true);
-  assert.ok(order.breakdown.lines.some((l) => l.key === "urgent" && l.percent === 20));
+  assert.ok(
+    order.breakdown.lines.some((l) => l.key === "urgent" && l.percent === 20),
+  );
   // 紧急单取消：不退预付款.
   assert.equal(order.cancellation.refundPercent, 0);
 });

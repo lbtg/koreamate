@@ -192,13 +192,17 @@ export function createApp({
   addColumn("guides", "asking_rate", "INTEGER DEFAULT 0");
   // Before levels existed the interpreter's own figure was the charged price. It
   // becomes their asking price; the charged one is set by a reviewer from here on.
-  run("UPDATE guides SET asking_rate=rate WHERE asking_rate IS NULL OR asking_rate=0");
+  run(
+    "UPDATE guides SET asking_rate=rate WHERE asking_rate IS NULL OR asking_rate=0",
+  );
   addColumn("bookings", "mode", "TEXT DEFAULT 'onsite'");
   addColumn("bookings", "minutes", "INTEGER DEFAULT 0");
   addColumn("bookings", "breakdown", "TEXT DEFAULT ''");
   addColumn("bookings", "urgent", "INTEGER DEFAULT 0");
   // Orders written before the booking carried its own duration.
-  run("UPDATE bookings SET minutes=(end-start)/60000 WHERE minutes IS NULL OR minutes=0");
+  run(
+    "UPDATE bookings SET minutes=(end-start)/60000 WHERE minutes IS NULL OR minutes=0",
+  );
   const defaults = {
     commission: 20,
     responseHours: 24,
@@ -214,9 +218,7 @@ export function createApp({
     paymentInstructions: "",
     // 《客户预订与服务方案》. Seeded from the document's own figures and editable in the
     // admin settings page, because the document says the published rates govern.
-    levelRates: Object.fromEntries(
-      LEVEL_KEYS.map((k) => [k, LEVELS[k].rate]),
-    ),
+    levelRates: Object.fromEntries(LEVEL_KEYS.map((k) => [k, LEVELS[k].rate])),
     pricing: { ...PRICING_DEFAULTS },
   };
   for (const [k, v] of Object.entries(defaults))
@@ -690,7 +692,9 @@ export function createApp({
             // A voice call has no one travelling to you, so 接待人数 and the city only
             // constrain an on-site booking.
             (mode === "online" || g.capacity >= adults + children) &&
-            (mode !== "online" || g.offers_online === null || g.offers_online) &&
+            (mode !== "online" ||
+              g.offers_online === null ||
+              g.offers_online) &&
             (!get("chinese") || g.chinese_level === get("chinese")) &&
             (!get("style") || g.style === get("style")) &&
             fits(g, start, end),
@@ -1472,7 +1476,9 @@ export function createApp({
         if (!reason) fail("请填写审核意见");
         // The level sets the hourly rate the customer is charged, so an approval
         // without one would put an interpreter on sale at an unreviewed price.
-        const level = LEVEL_KEYS.includes(data.level) ? data.level : g.level || "";
+        const level = LEVEL_KEYS.includes(data.level)
+          ? data.level
+          : g.level || "";
         if (data.status === "approved" && !level)
           fail("请先为该译员评定等级（L1–L5）后再通过审核");
         const offersOnline =
