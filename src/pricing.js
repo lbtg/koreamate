@@ -15,13 +15,105 @@
 // review, and the level — not the interpreter's own asking price — is what is charged:
 // 「实际价格以平台公示的各等级时薪为准」.
 export const LEVELS = {
-  L1: { zh: "见习译员", ko: "수습 통역사", rate: 60 },
-  L2: { zh: "初级译员", ko: "초급 통역사", rate: 80 },
-  L3: { zh: "中级译员", ko: "중급 통역사", rate: 100 },
-  L4: { zh: "高级译员", ko: "고급 통역사", rate: 150 },
-  L5: { zh: "资深译员", ko: "전문 통역사", rate: 220 },
+  L1: {
+    zh: "见习",
+    ko: "수습",
+    rate: 60,
+    scope: ["基础生活陪同", "기초 생활 동행 통역"],
+  },
+  L2: {
+    zh: "初级",
+    ko: "초급",
+    rate: 80,
+    scope: [
+      "独立处理日常生活、基础行政场景",
+      "일상생활과 기초 행정 상황을 단독 처리",
+    ],
+  },
+  L3: {
+    zh: "中级",
+    ko: "중급",
+    rate: 100,
+    scope: [
+      "主力译员；出入境、学校、租房及常见行政场景",
+      "주력 통역사: 출입국, 학교, 부동산 및 일반 행정 상황",
+    ],
+  },
+  L4: {
+    zh: "高级",
+    ko: "고급",
+    rate: 150,
+    scope: ["劳动沟通、合同与商务场景", "노무 소통, 계약 및 비즈니스 상황"],
+  },
+  L5: {
+    zh: "专家",
+    ko: "전문가",
+    rate: 220,
+    scope: [
+      "法律、医疗、税务等专业领域沟通协助",
+      "법률, 의료, 세무 등 전문 영역 소통 지원",
+    ],
+  },
+  L6: {
+    zh: "金牌",
+    ko: "골드",
+    rate: 300,
+    scope: [
+      "平台认证专家；按资质开放高级场景，可带教与参与争议评审",
+      "플랫폼 인증 전문가: 자격에 따라 고급 상황 담당, 멘토링 및 분쟁 심의 참여",
+    ],
+  },
 };
 export const LEVEL_KEYS = Object.keys(LEVELS);
+
+// 第 10 条 晋升门槛. Shown to interpreters so the ladder is something they can see
+// rather than ask about; the platform does not promote automatically — a level is
+// still assigned by a reviewer, and these are the thresholds that reviewer applies.
+export const PROMOTION = {
+  L1: {
+    orders: 0,
+    rating: 0,
+    extra: ["通过服务准则笔试", "서비스 수칙 필기 통과"],
+  },
+  L2: {
+    orders: 20,
+    rating: 4.5,
+    extra: ["通过生活场景考核", "생활 상황 평가 통과"],
+  },
+  L3: {
+    orders: 30,
+    rating: 4.6,
+    extra: ["通过行政场景考核", "행정 상황 평가 통과"],
+  },
+  L4: {
+    orders: 50,
+    rating: 4.7,
+    extra: ["通过专业场景考核", "전문 상황 평가 통과"],
+  },
+  L5: {
+    orders: 80,
+    rating: 4.8,
+    extra: [
+      "具备相关资质或从业背景及领域考核",
+      "관련 자격 또는 실무 경력 및 영역 평가",
+    ],
+  },
+  L6: {
+    orders: 100,
+    rating: 4.9,
+    extra: ["通过平台评审委员会审核", "플랫폼 심의위원회 승인"],
+  },
+};
+// 「当前等级任职至少 1 个月、无重大违规记录、完成相应进阶培训及考核。」
+export const PROMOTION_CONDITIONS = [
+  ["在当前等级任职满 1 个月", "현재 등급에서 1개월 이상 근무"],
+  ["无重大违规记录", "중대한 위반 기록 없음"],
+  ["完成相应进阶培训及考核", "해당 심화 교육 및 평가 이수"],
+  [
+    "态度评分达标（未达标者不得升级）",
+    "태도 평가 기준 충족 (미달 시 승급 불가)",
+  ],
+];
 
 export const MODES = {
   onsite: { zh: "线下一对一", ko: "오프라인 1:1" },
@@ -41,7 +133,7 @@ export const SCENE_LOAD = {
   errands: 0,
   concert: 0,
 };
-export const LEVEL_LOAD = { L1: 0, L2: 0, L3: 0, L4: 10, L5: 20 };
+export const LEVEL_LOAD = { L1: 0, L2: 0, L3: 0, L4: 10, L5: 20, L6: 20 };
 export const SCENE_LOAD_CAP = 50;
 
 export const PRICING_DEFAULTS = {

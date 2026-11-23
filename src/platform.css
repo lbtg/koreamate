@@ -2640,7 +2640,8 @@ footer {
   color: #8a5a33;
 }
 .level-tag.l4,
-.level-tag.l5 {
+.level-tag.l5,
+.level-tag.l6 {
   background: var(--green);
   color: #f3e7d6;
 }

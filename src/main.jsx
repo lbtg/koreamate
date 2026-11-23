@@ -2308,11 +2308,13 @@ function Help(ctx) {
           head={[
             t("等级", "등급"),
             t("称谓", "명칭"),
+            t("服务定位", "담당 범위"),
             t("标准时薪", "표준 시급"),
           ]}
           rows={LEVEL_KEYS.map((k) => [
             <b key={k}>{k}</b>,
             t(LEVELS[k].zh, LEVELS[k].ko),
+            t(...LEVELS[k].scope),
             money(rates[k] ?? LEVELS[k].rate) + t("/小时", "/시간"),
           ])}
         />
@@ -3515,11 +3517,22 @@ function PaymentReturn({ navigate, failed, refresh, t }) {
   );
 }
 function GuideWorkspace(ctx) {
-  const { t, labels, revision, refresh, message } = ctx,
+  const { t, labels, revision, refresh, message, navigate } = ctx,
     [tab, setTab] = useState("profile"),
-    { data: profile, loading, error } = useLoad("/guide/profile", revision);
+    { data: profile, loading, error } = useLoad("/guide/profile", revision),
+    { data: bookings } = useLoad("/bookings", revision);
   const [busy, setBusy] = useState(false),
     [failure, setFailure] = useState("");
+  // Both timing buttons sit with the interpreter, so the whole record depends on them
+  // remembering to press the first one. An order whose start time has passed and is
+  // still only 'confirmed' is one nobody has started — say so, at the top, with the
+  // way to fix it one click away.
+  const notStarted = (Array.isArray(bookings) ? bookings : []).filter(
+    (b) => b.status === "confirmed" && b.start <= Date.now(),
+  );
+  const running = (Array.isArray(bookings) ? bookings : []).filter(
+    (b) => b.status === "in_service",
+  );
   async function save(path, data, method = "POST") {
     setBusy(true);
     setFailure("");
@@ -3562,6 +3575,49 @@ function GuideWorkspace(ctx) {
           </div>
         )}
       </div>
+      {notStarted.map((b) => (
+        <div className="notice error review-state" key={b.id}>
+          <b>
+            {t(
+              "有一单已到预约时间，还没有点「确认服务开始」",
+              "예약 시각이 지났는데 「서비스 시작 확인」을 누르지 않은 예약이 있습니다",
+            )}
+          </b>
+          <span>
+            {kst(b.start)} · {b.guestName} ·{" "}
+            {t(
+              "服务时长按你点击的时刻计算，忘记点会影响超时费用的认定。",
+              "서비스 시간은 누른 시각부터 계산되며, 누르지 않으면 초과 요금 산정에 영향이 있습니다.",
+            )}
+          </span>
+          <span>
+            <button
+              className="text-button"
+              onClick={() => navigate("/orders/" + b.id)}
+            >
+              {t("去确认开始 →", "시작 확인하러 가기 →")}
+            </button>
+          </span>
+        </div>
+      ))}
+      {running.map((b) => (
+        <div className="notice review-state ok" key={b.id}>
+          <b>{t("服务进行中", "서비스 진행 중")}</b>
+          <span>
+            {b.guestName} ·{" "}
+            {t(
+              "结束时请点「申请结束服务」，平台按这一刻记录实际时长。",
+              "종료 시 「서비스 종료 신청」을 눌러 주세요. 그 시각으로 실제 소요 시간이 기록됩니다.",
+            )}
+            <button
+              className="text-button"
+              onClick={() => navigate("/orders/" + b.id)}
+            >
+              {t("打开订单 →", "예약 열기 →")}
+            </button>
+          </span>
+        </div>
+      ))}
       {/* Registering is not the same as being on the platform, and an interpreter
           waiting on review should be told so plainly rather than wondering why no
           booking ever arrives. */}
@@ -4302,7 +4358,7 @@ function AdminGuides({ revision, save, busy, user, t }) {
                     <option key={k} value={k}>
                       {k} · {t(LEVELS[k].zh, LEVELS[k].ko)} ·{" "}
                       {money(LEVELS[k].rate)}
-                      {t("/小时", "/시간")}
+                      {t("/小时", "/시간")} · {t(...LEVELS[k].scope)}
                     </option>
                   ))}
                 </select>

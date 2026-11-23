@@ -6,15 +6,22 @@ import React, { useEffect } from "react";
 // interpreters in Korean — so every line carries both languages and the page follows
 // whichever the reader has chosen, like the rest of the site.
 //
-// Bracketed values are the operator's own registration details and must be filled in
-// before the pages go in front of an underwriter.
+// Taken from the Hong Kong Business Registration Certificate (form 2, Chapter 310).
+// A payment underwriter checks these against the registry, so they are transcribed
+// exactly as the certificate prints them rather than tidied up. Anything still in
+// brackets has no source document yet and must be filled before launch.
 const COMPANY = {
-  hk: "【香港公司英文全称】(【中文名称】)",
-  br: "【香港商业登记证号码】",
-  address: "【香港注册地址】",
+  // Certificate no. 77709912-000-02-26-9; the registration number is the first eight
+  // digits. Current period 17/02/2026 – 16/02/2027, so this needs renewing each year.
+  hk: "SAN PIN INFORMATION TRADING (HONG KONG) CO., LIMITED",
+  br: "77709912（登记证号码 77709912-000-02-26-9）",
+  address:
+    "九龙旺角弥敦道625号雅兰中心办公楼二期15楼1508室 / Room 1508, 15/F, Argyle Centre Office Tower Phase 2, 625 Nathan Road, Mongkok, Kowloon, Hong Kong",
   partner: "【韩国委托公司名称】",
   email: "【客服邮箱】",
-  effective: ["2026年9月30日", "2026년 9월 30일"],
+  // Bumped because the service rules below were rewritten in full on this date; terms
+  // that changed cannot keep the effective date of the version they replaced.
+  effective: ["2026年11月23日", "2026년 11월 23일"],
 };
 
 const doc = (title, sections) => ({
