@@ -21,6 +21,7 @@ import {
   SCENE_LOAD,
   cancellationTerms,
   minimumMinutes,
+  overtimeQuote,
   quote,
 } from "../src/pricing.js";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -199,6 +200,18 @@ export function createApp({
   addColumn("bookings", "minutes", "INTEGER DEFAULT 0");
   addColumn("bookings", "breakdown", "TEXT DEFAULT ''");
   addColumn("bookings", "urgent", "INTEGER DEFAULT 0");
+  // When the service actually ran, as opposed to when it was booked for. 「超时计费」
+  // is meaningless without these two.
+  addColumn("bookings", "started_at", "INTEGER DEFAULT 0");
+  addColumn("bookings", "finished_at", "INTEGER DEFAULT 0");
+  addColumn("bookings", "actual_minutes", "INTEGER DEFAULT 0");
+  addColumn("bookings", "overtime_minutes", "INTEGER DEFAULT 0");
+  // Kept apart from total on purpose: total is what the payment attempt, the refund
+  // ledger and the commission were all computed against, and moving it after payment
+  // would put those out of step. Overtime is a second amount, collected separately.
+  addColumn("bookings", "overtime_amount", "INTEGER DEFAULT 0");
+  addColumn("bookings", "overtime_breakdown", "TEXT DEFAULT ''");
+  addColumn("bookings", "overtime_status", "TEXT DEFAULT ''");
   // Orders written before the booking carried its own duration.
   run(
     "UPDATE bookings SET minutes=(end-start)/60000 WHERE minutes IS NULL OR minutes=0",
@@ -331,6 +344,12 @@ export function createApp({
     }
   };
   const guideFor = (u) => one("SELECT * FROM guides WHERE user_id=?", u.id);
+  // Clock time in Seoul, and a duration a person reads without doing arithmetic.
+  const hhmmKst = (ms) => new Date(ms + 32400000).toISOString().slice(11, 16);
+  const minutesText = (m) =>
+    m >= 60
+      ? `${Math.floor(m / 60)}小时${m % 60 ? `${m % 60}分` : ""}`
+      : `${m}分钟`;
   const expire = () => {
     for (const b of q(
       "SELECT * FROM bookings WHERE status IN ('requested','awaiting_payment') AND expires<=?",
@@ -509,6 +528,15 @@ export function createApp({
       nowMs: now(),
       urgent: !!b.urgent,
     }),
+    // What actually happened, beside what was booked, so neither side has to take the
+    // other's word for it.
+    overtime: (() => {
+      try {
+        return b.overtime_breakdown ? JSON.parse(b.overtime_breakdown) : null;
+      } catch {
+        return null;
+      }
+    })(),
     guideName: one(
       "SELECT u.name FROM users u JOIN guides g ON u.id=g.user_id WHERE g.id=?",
       b.guide_id,
@@ -1208,23 +1236,63 @@ export function createApp({
         )
           fail("仅随行翻译可在开始前15分钟内确认开始");
         run(
-          "UPDATE bookings SET status='in_service',updated=? WHERE id=?",
+          "UPDATE bookings SET status='in_service',started_at=?,updated=? WHERE id=?",
+          now(),
           now(),
           b.id,
         );
-        participants(b, "服务已开始");
-        log(u, "service.started", b.id);
+        participants(
+          b,
+          `服务已开始（${hhmmKst(now())}，韩国时间）。结束时将按实际时长核对是否超时。`,
+        );
+        log(u, "service.started", b.id, `started_at=${now()}`);
         return { ok: true };
       }
       if (action === "finish") {
         if (u.id !== b.guide_user || b.status !== "in_service")
           fail("当前无法申请完成");
+        // 「超时计费」. Measured from the real start if one was stamped, and from the
+        // booked start otherwise, so an interpreter who forgot the start button is
+        // never credited with time nobody recorded.
+        const ended = now();
+        const began = b.started_at || b.start;
+        const actual = Math.max(0, Math.round((ended - began) / 60000));
+        const booked = b.minutes || Math.round((b.end - b.start) / 60000);
+        const over = Math.max(0, actual - booked);
+        const g = one("SELECT * FROM guides WHERE id=?", b.guide_id);
+        const extra = over
+          ? overtimeQuote({
+              rate: g?.rate || 0,
+              mode: b.mode || "onsite",
+              bookedEndMs: began + booked * 60000,
+              overtimeMinutes: over,
+              settings: pricingConfig().cfg,
+            })
+          : null;
+        const amount = extra?.total || 0;
         run(
-          "UPDATE bookings SET status='completion_pending',updated=? WHERE id=?",
-          now(),
+          "UPDATE bookings SET status='completion_pending',finished_at=?,actual_minutes=?,overtime_minutes=?,overtime_amount=?,overtime_breakdown=?,overtime_status=?,updated=? WHERE id=?",
+          ended,
+          actual,
+          over,
+          amount,
+          extra ? JSON.stringify(extra) : "",
+          amount > 0 ? "pending" : "",
+          ended,
           b.id,
         );
-        participants(b, "随行翻译已申请结束服务，请游客确认");
+        participants(
+          b,
+          amount > 0
+            ? `随行翻译申请结束服务：实际 ${minutesText(actual)}，预约 ${minutesText(booked)}，超时 ${minutesText(over)}，需补交 ¥${amount}。请游客核对后确认。`
+            : `随行翻译申请结束服务：实际 ${minutesText(actual)}，未超出预约时长。请游客确认。`,
+        );
+        log(
+          u,
+          "service.finished",
+          b.id,
+          `started=${began} ended=${ended} actual=${actual}min booked=${booked}min overtime=${over}min charge=${amount}`,
+        );
         return { ok: true };
       }
       if (action === "complete") {
@@ -1235,8 +1303,21 @@ export function createApp({
           now(),
           b.id,
         );
-        participants(b, "游客已确认服务完成，可以评价");
-        log(u, "service.completed", b.id);
+        if (b.overtime_amount > 0) {
+          // The guest confirming the recorded times is what makes the overtime owed.
+          // It is collected outside the original payment, so a person has to act.
+          admins(`订单有超时费用待收取：¥${b.overtime_amount}`, b.id);
+          participants(
+            b,
+            `已确认服务完成。超时 ${minutesText(b.overtime_minutes)}，需补交 ¥${b.overtime_amount}，平台将联系安排补款。`,
+          );
+        } else participants(b, "游客已确认服务完成，可以评价");
+        log(
+          u,
+          "service.completed",
+          b.id,
+          `actual=${b.actual_minutes}min overtime=${b.overtime_minutes}min charge=${b.overtime_amount}`,
+        );
         return { ok: true };
       }
       if (action === "review") {
@@ -1635,6 +1716,7 @@ export function createApp({
             weekendPercent: [0, 200],
             minOnsiteMinutes: [0, 720],
             minOnlineMinutes: [0, 720],
+            overtimeGraceMinutes: [0, 120],
           };
           const cfg = { ...current.cfg };
           for (const [k, [lo, hi]] of Object.entries(limits))

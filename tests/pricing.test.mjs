@@ -507,3 +507,84 @@ test("a voice call is not limited to one city", async () => {
     true,
   );
 });
+
+test("overtime is measured, graced, priced and kept apart from the paid total", async () => {
+  const { overtimeQuote, PRICING_DEFAULTS } = await import("../src/pricing.js");
+  const grace = PRICING_DEFAULTS.overtimeGraceMinutes;
+
+  // A booking that starts in a moment, so the service can actually be started.
+  const soon = new Date(Date.now() + 10 * 60000 + 32400000);
+  const d = soon.toISOString().slice(0, 10);
+  const hhmm = soon.toISOString().slice(11, 16);
+  await guide("/guide/availability", "POST", { date: d, start: 0, end: 1440 });
+  const booked = 120;
+  const r = await guest("/bookings", "POST", {
+    guideId: gid,
+    date: d,
+    time: hhmm,
+    minutes: booked,
+    adults: 1,
+    children: 0,
+    purposes: ["shopping"],
+  });
+  await guide("/bookings/" + r.id + "/accept", "POST", {});
+  await admin("/bookings/" + r.id + "/confirm-payment", "POST", {
+    reference: "ot-1",
+  });
+
+  // Starting stamps the real clock, and the guest cannot do it (the endpoint answers
+  // 400 with the same guard that carries the 15-minute window).
+  await guest("/bookings/" + r.id + "/start", "POST", {}, 400);
+  await guide("/bookings/" + r.id + "/start", "POST", {});
+  let b = await guest("/bookings/" + r.id);
+  assert.ok(b.started_at > 0, "started_at not stamped");
+  assert.equal(b.status, "in_service");
+
+  // Finishing immediately is well inside the booked window, so no overtime.
+  await guide("/bookings/" + r.id + "/finish", "POST", {});
+  b = await guest("/bookings/" + r.id);
+  assert.ok(b.finished_at >= b.started_at);
+  assert.equal(b.overtime_minutes, 0);
+  assert.equal(b.overtime_amount, 0);
+  assert.equal(b.status, "completion_pending");
+
+  // Finishing early does not reduce what was paid: 「最低计费时长」 is the booked time.
+  const paid = b.total;
+  await guest("/bookings/" + r.id + "/complete", "POST", {});
+  b = await guest("/bookings/" + r.id);
+  assert.equal(b.total, paid);
+  assert.equal(b.status, "completed");
+
+  // The grace, and the arithmetic, at the unit level — a service cannot be made to
+  // run two hours long inside a test.
+  const rate = LEVELS.L3.rate;
+  const end = Date.parse("2026-12-07T13:00:00+09:00");
+  assert.equal(
+    overtimeQuote({ rate, bookedEndMs: end, overtimeMinutes: grace }).total,
+    0,
+  );
+  assert.equal(
+    overtimeQuote({ rate, bookedEndMs: end, overtimeMinutes: grace + 30 })
+      .total,
+    Math.round((rate * 30) / 60),
+  );
+  // Night loading follows the moment the overtime began.
+  const night = Date.parse("2026-12-07T22:00:00+09:00");
+  const late = overtimeQuote({
+    rate,
+    bookedEndMs: night,
+    overtimeMinutes: grace + 30,
+  });
+  assert.ok(late.lines.some((l) => l.key === "night"));
+  assert.ok(late.total > Math.round((rate * 30) / 60));
+  // An online overtime minute is charged off the reduced base.
+  assert.equal(
+    overtimeQuote({
+      rate,
+      mode: "online",
+      bookedEndMs: end,
+      overtimeMinutes: grace + 30,
+    }).total,
+    Math.round((rate * 30 * 50) / 6000),
+  );
+});

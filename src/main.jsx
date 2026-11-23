@@ -43,6 +43,7 @@ import { LEGAL, LegalPage } from "./legal.jsx";
 import Intro, { shouldShowIntro, INTRO_ROUTE } from "./intro.jsx";
 import { INLINE_VIDEO_ATTRS, useInlineAutoplay } from "./autoplay.js";
 import {
+  LATE_GRACE_MINUTES,
   LEVELS,
   LEVEL_KEYS,
   MODES,
@@ -385,6 +386,15 @@ const kst = (n) =>
     timeZone: "Asia/Seoul",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(n));
+// Just the clock part of an instant, in Seoul — for the end of a range whose date the
+// start already gave.
+const hm2 = (n) =>
+  new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Seoul",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -2340,8 +2350,15 @@ function Help(ctx) {
           <li>
             <b>{t("超时计费", "초과 시간")}</b>：
             {t(
-              "超出预约时长的部分，按时薪以实际分钟数累计；若超时跨越夜间或节假日，按相应加成另行计算。",
-              "예약 시간을 초과한 부분은 시급 기준으로 실제 분 단위로 가산되며, 야간·공휴일에 걸치면 해당 할증이 따로 적용됩니다.",
+              `译员在服务开始和结束时各确认一次，平台记录真实时刻，双方都能在订单页看到。超出预约时长 ${cfg.overtimeGraceMinutes} 分钟以内不计费；超过的部分按时薪以实际分钟数累计，若落在夜间或节假日，按相应加成另行计算。超时费用不计入原订单付款，由平台另行联系补交。`,
+              `통역사가 서비스 시작과 종료 시 각각 확인하며, 플랫폼이 실제 시각을 기록해 양측 모두 주문 화면에서 확인할 수 있습니다. 예약 시간을 ${cfg.overtimeGraceMinutes}분 이내로 초과한 경우에는 과금하지 않으며, 그 이상은 시급 기준으로 실제 분 단위 가산됩니다. 야간·공휴일에 해당하면 할증이 적용됩니다. 초과 요금은 원래 결제에 포함되지 않고 플랫폼이 별도로 안내합니다.`,
+            )}
+          </li>
+          <li>
+            <b>{t("提前结束", "조기 종료")}</b>：
+            {t(
+              "实际时长短于预约时长的，仍按预约时长计费，不退差额。",
+              "실제 이용 시간이 예약 시간보다 짧아도 예약 시간 기준으로 청구되며 차액은 환불되지 않습니다.",
             )}
           </li>
           <li>
@@ -2553,9 +2570,122 @@ function OrderCard({ b, t, navigate }) {
       </div>
       <div className="order-right">
         <strong>{money(b.total)}</strong>
+        {b.overtime_amount > 0 && (
+          <span className="order-overtime">
+            {t("超时待补", "초과 미수")} +{money(b.overtime_amount)}
+          </span>
+        )}
         <ChevronRight size={20} />
       </div>
     </button>
+  );
+}
+// 服务计时. The interpreter's 「确认服务开始」 and 「申请结束服务」 stamp the real clock,
+// and this is the record both sides read before the guest confirms. Nothing here is
+// editable: it is the evidence, and the guest confirming it is what makes any overtime
+// owed. A disagreement goes through 售后 / 问题反馈, not through changing the numbers.
+function ServiceClock({ b, t }) {
+  if (
+    !b.started_at &&
+    !["in_service", "completion_pending", "completed"].includes(b.status)
+  )
+    return null;
+  const booked = b.minutes || Math.round((b.end - b.start) / 60000);
+  const over = b.overtime_minutes || 0;
+  // 「译员迟到超过30分钟：客户可选择免费改期或全额退款」. The stamped start is what
+  // decides it, so the rule stops being something the customer has to argue for.
+  const lateMinutes = b.started_at
+    ? Math.round((b.started_at - b.start) / 60000)
+    : 0;
+  const veryLate = lateMinutes > LATE_GRACE_MINUTES;
+  const row = (label, value, strong = false) => (
+    <div className="clock-row">
+      <span>{label}</span>
+      {strong ? <strong>{value}</strong> : <b>{value}</b>}
+    </div>
+  );
+  return (
+    <div className={over > 0 ? "service-clock over" : "service-clock"}>
+      <h3>
+        <Timer size={17} />
+        {t("服务计时记录", "서비스 시간 기록")}
+      </h3>
+      {row(
+        t("预约时段", "예약 시간"),
+        `${kst(b.start)} — ${hm2(b.end)}（${duration(booked, t)}）`,
+      )}
+      {row(
+        t("实际开始", "실제 시작"),
+        b.started_at
+          ? `${kst(b.started_at)}${
+              lateMinutes > 0
+                ? t(`（迟 ${lateMinutes} 分钟）`, ` (${lateMinutes}분 지연)`)
+                : ""
+            }`
+          : t("未记录", "기록 없음"),
+      )}
+      {row(
+        t("实际结束", "실제 종료"),
+        b.finished_at ? kst(b.finished_at) : t("进行中", "진행 중"),
+      )}
+      {!!b.actual_minutes &&
+        row(t("实际时长", "실제 소요"), duration(b.actual_minutes, t))}
+      {veryLate && (
+        <div className="notice error clock-late">
+          {t(
+            `译员比预约时间迟到 ${lateMinutes} 分钟（超过 ${LATE_GRACE_MINUTES} 分钟）。按规则你可以选择免费改期或全额退款，请通过「售后 / 问题反馈」提出。`,
+            `통역사가 예약 시각보다 ${lateMinutes}분 지연했습니다 (${LATE_GRACE_MINUTES}분 초과). 규정에 따라 무료 일정 변경 또는 전액 환불을 선택할 수 있으니 「사후 지원」으로 알려 주세요.`,
+          )}
+        </div>
+      )}
+      {b.finished_at && over > 0 ? (
+        <>
+          {row(
+            t("超出预约", "예약 초과"),
+            `${duration(over, t)}${
+              b.overtime?.graceMinutes
+                ? t(
+                    `（宽限 ${b.overtime.graceMinutes} 分钟，按 ${duration(b.overtime.billableMinutes, t)} 计费）`,
+                    ` (유예 ${b.overtime.graceMinutes}분, ${duration(b.overtime.billableMinutes, t)} 과금)`,
+                  )
+                : ""
+            }`,
+          )}
+          {b.overtime?.lines?.map((l) => (
+            <div className="clock-row sub" key={l.key}>
+              <span>{t(...(SURCHARGE_LABEL[l.key] || [l.key, l.key]))}</span>
+              <b>+{money(l.amount)}</b>
+            </div>
+          ))}
+          {row(t("需补交", "추가 결제 필요"), money(b.overtime_amount), true)}
+          <p className="clock-note">
+            {b.status === "completion_pending"
+              ? t(
+                  "请核对以上时间。确认完成即表示你同意这笔超时费用；如有异议，请先通过「售后 / 问题反馈」提出，不要点确认。",
+                  "위 시간을 확인해 주세요. 완료를 확인하면 초과 요금에 동의하는 것이 됩니다. 이의가 있으면 완료를 누르지 말고 「사후 지원」으로 먼저 알려 주세요.",
+                )
+              : t(
+                  "超时费用不包含在原订单付款中，平台会另行联系安排补款。",
+                  "초과 요금은 원래 결제에 포함되지 않으며, 플랫폼이 별도로 안내합니다.",
+                )}
+          </p>
+        </>
+      ) : b.finished_at ? (
+        <p className="clock-note">
+          {t(
+            "未超出预约时长，无需补交费用。服务不足预约时长的，按预约时长计费。",
+            "예약 시간을 초과하지 않아 추가 요금이 없습니다. 예약 시간보다 짧게 이용한 경우에도 예약 시간 기준으로 청구됩니다.",
+          )}
+        </p>
+      ) : (
+        <p className="clock-note">
+          {t(
+            "结束时按实际时长核对；超出预约时长的部分会按规则计费。",
+            "종료 시 실제 시간으로 확인하며, 예약 시간을 초과한 부분은 규정에 따라 청구됩니다.",
+          )}
+        </p>
+      )}
+    </div>
   );
 }
 function OrderDetail(ctx) {
@@ -2665,6 +2795,7 @@ function OrderDetail(ctx) {
             <p className="prose">
               {b.note || t("无特别要求", "요청 사항 없음")}
             </p>
+            <ServiceClock b={b} t={t} />
             {b.expires &&
               ["requested", "awaiting_payment"].includes(b.status) && (
                 <div className="notice">
@@ -4399,6 +4530,7 @@ function AdminPricing({ session, save, busy, t }) {
             weekendPercent: f.weekendPercent,
             minOnsiteMinutes: f.minOnsiteMinutes,
             minOnlineMinutes: f.minOnlineMinutes,
+            overtimeGraceMinutes: f.overtimeGraceMinutes,
             holidays: holidays
               .split(/[\s,，]+/)
               .map((x) => x.trim())
@@ -4513,6 +4645,18 @@ function AdminPricing({ session, save, busy, t }) {
             min="0"
             max="720"
             defaultValue={cfg.minOnlineMinutes}
+            required
+          />
+        </Field>
+        <Field
+          label={t("超时宽限 分钟（以内不计费）", "초과 유예 (분, 이내 무료)")}
+        >
+          <input
+            name="overtimeGraceMinutes"
+            type="number"
+            min="0"
+            max="120"
+            defaultValue={cfg.overtimeGraceMinutes}
             required
           />
         </Field>

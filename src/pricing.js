@@ -60,6 +60,11 @@ export const PRICING_DEFAULTS = {
   minOnlineMinutes: 10,
   // 「法定节假日」 has no formula — the admin keeps the list, as YYYY-MM-DD in KST.
   holidays: [],
+  // Overtime is billed by the minute, and the interpreter holds both the start and
+  // the finish button. With no grace, a service running two minutes long produces a
+  // bill and an argument, and a minute of padding produces a charge nobody can
+  // dispute. Only the part beyond the grace is billable, so there is no cliff.
+  overtimeGraceMinutes: 10,
 };
 
 const KST = 9 * 3600000;
@@ -105,15 +110,18 @@ export function quote({
   purposes = [],
   nowMs = Date.now(),
   settings = {},
+  // Overtime turns these off; overtimeQuote below says why.
+  applyMinimum = true,
+  allowUrgent = true,
+  allowScene = true,
 }) {
   const cfg = { ...PRICING_DEFAULTS, ...settings };
   // rate is the interpreter's reviewed hourly rate — the single charged figure.
   // level only shifts the professional-scene loading below.
   const hourly = Number(rate) || 0;
-  const billedMinutes = Math.max(
-    Math.round(Number(minutes) || 0),
-    minimumMinutes(mode, cfg),
-  );
+  const billedMinutes = applyMinimum
+    ? Math.max(Math.round(Number(minutes) || 0), minimumMinutes(mode, cfg))
+    : Math.max(0, Math.round(Number(minutes) || 0));
 
   // 线上语音 is a percentage of the on-site hourly rate, and everything after this is
   // figured on that reduced base — the document's own example takes 20% of the online
@@ -134,7 +142,7 @@ export function quote({
 
   // 紧急预约: measured from when the customer orders to when the service starts.
   const leadHours = (startMs - nowMs) / 3600000;
-  const urgent = leadHours < pct(cfg.urgentHours);
+  const urgent = allowUrgent && leadHours < pct(cfg.urgentHours);
   if (urgent) add("urgent", pct(cfg.urgentPercent));
 
   // 时段加成. Night is decided by the start time, as the document words it
@@ -150,10 +158,9 @@ export function quote({
 
   // 场景加成: the heaviest selected scene decides it. Adding the scenes together would
   // punish a customer for describing their day honestly.
-  const sceneBase = purposes.reduce(
-    (m, p) => Math.max(m, SCENE_LOAD[p] ?? 0),
-    0,
-  );
+  const sceneBase = allowScene
+    ? purposes.reduce((m, p) => Math.max(m, SCENE_LOAD[p] ?? 0), 0)
+    : 0;
   if (sceneBase > 0) {
     const scene = Math.min(
       SCENE_LOAD_CAP,
@@ -173,6 +180,52 @@ export function quote({
     base: Math.round(base),
     lines,
     total: Math.round(base) + surcharges,
+  };
+}
+
+/**
+ * 「超时计费：服务时长超出预约时长的部分，按对应等级时薪按实际分钟数累计。若超时部分
+ * 跨越夜间时段或节假日，按相应时段加成规则另行计算。」
+ *
+ * Three things the booking quote does are deliberately off here, because the sentence
+ * above asks for none of them on overtime:
+ *  - no minimum, or ten minutes over would bill as two hours;
+ *  - no urgent fee, which is about how late the booking was placed, not about this;
+ *  - no scene loading, which that sentence does not mention. It makes an overtime
+ *    minute slightly cheaper than a booked one on a medical job. Charging less than
+ *    the published rule is the safe direction to be wrong in.
+ *
+ * Night and weekend loading are decided by the moment the overtime began — the end of
+ * the booked window — so a service running past 22:00 is charged at the night rate.
+ */
+export function overtimeQuote({
+  rate,
+  mode = "onsite",
+  bookedEndMs,
+  overtimeMinutes,
+  settings = {},
+}) {
+  const cfg = { ...PRICING_DEFAULTS, ...settings };
+  const grace = Math.max(0, Math.round(cfg.overtimeGraceMinutes ?? 0));
+  const over = Math.max(0, Math.round(Number(overtimeMinutes) || 0));
+  const billable = Math.max(0, over - grace);
+  const priced = quote({
+    rate,
+    mode,
+    startMs: bookedEndMs,
+    minutes: billable,
+    purposes: [],
+    nowMs: bookedEndMs,
+    settings: cfg,
+    applyMinimum: false,
+    allowUrgent: false,
+    allowScene: false,
+  });
+  return {
+    ...priced,
+    overtimeMinutes: over,
+    graceMinutes: grace,
+    billableMinutes: billable,
   };
 }
 
