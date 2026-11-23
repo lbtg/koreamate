@@ -588,3 +588,31 @@ test("overtime is measured, graced, priced and kept apart from the paid total", 
     Math.round((rate * 30 * 50) / 6000),
   );
 });
+
+test("overtime uses the rate the order was quoted at, not today's", async () => {
+  // Book at the current published rate, then move the published rate before the
+  // service runs. The extra minutes must follow the order, not the table.
+  // An hour no other case in this file uses, on the shared weekday.
+  const quoted = (await guest("/interpreters")).interpreters.find(
+    (x) => x.id === gid,
+  ).rate;
+  const r = await guest("/bookings", "POST", {
+    guideId: gid,
+    date,
+    time: "08:00",
+    minutes: 120,
+    adults: 1,
+    children: 0,
+    purposes: ["shopping"],
+  });
+  const order = await guest("/bookings/" + r.id);
+  assert.equal(order.breakdown.hourly, quoted);
+
+  // Double the published rate for this level after the order exists.
+  await admin("/admin/pricing", "POST", { levelRates: { L3: quoted * 2 } });
+  assert.equal((await guide("/guide/profile")).rate, quoted * 2);
+  // The placed order keeps the figure it was quoted at.
+  assert.equal((await guest("/bookings/" + r.id)).breakdown.hourly, quoted);
+
+  await admin("/admin/pricing", "POST", { levelRates: { L3: quoted } });
+});

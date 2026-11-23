@@ -1259,10 +1259,19 @@ export function createApp({
         const actual = Math.max(0, Math.round((ended - began) / 60000));
         const booked = b.minutes || Math.round((b.end - b.start) / 60000);
         const over = Math.max(0, actual - booked);
+        // The rate this order was quoted at, not the interpreter's rate today: the
+        // published table may have moved since, and the customer is owed the price
+        // they agreed to for the extra minutes as much as for the booked ones.
+        let bookedHourly = 0;
+        try {
+          bookedHourly = JSON.parse(b.breakdown || "{}").hourly || 0;
+        } catch {
+          bookedHourly = 0;
+        }
         const g = one("SELECT * FROM guides WHERE id=?", b.guide_id);
         const extra = over
           ? overtimeQuote({
-              rate: g?.rate || 0,
+              rate: bookedHourly || g?.rate || 0,
               mode: b.mode || "onsite",
               bookedEndMs: began + booked * 60000,
               overtimeMinutes: over,
