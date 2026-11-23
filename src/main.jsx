@@ -2584,7 +2584,7 @@ function OrderCard({ b, t, navigate }) {
 // and this is the record both sides read before the guest confirms. Nothing here is
 // editable: it is the evidence, and the guest confirming it is what makes any overtime
 // owed. A disagreement goes through 售后 / 问题反馈, not through changing the numbers.
-function ServiceClock({ b, t }) {
+function ServiceClock({ b, t, isGuest = true }) {
   if (
     !b.started_at &&
     !["in_service", "completion_pending", "completed"].includes(b.status)
@@ -2660,10 +2660,15 @@ function ServiceClock({ b, t }) {
           {row(t("需补交", "추가 결제 필요"), money(b.overtime_amount), true)}
           <p className="clock-note">
             {b.status === "completion_pending"
-              ? t(
-                  "请核对以上时间。确认完成即表示你同意这笔超时费用；如有异议，请先通过「售后 / 问题反馈」提出，不要点确认。",
-                  "위 시간을 확인해 주세요. 완료를 확인하면 초과 요금에 동의하는 것이 됩니다. 이의가 있으면 완료를 누르지 말고 「사후 지원」으로 먼저 알려 주세요.",
-                )
+              ? isGuest
+                ? t(
+                    "请核对以上时间。确认完成即表示你同意这笔超时费用；如有异议，请先通过「售后 / 问题反馈」提出，不要点确认。",
+                    "위 시간을 확인해 주세요. 완료를 확인하면 초과 요금에 동의하는 것이 됩니다. 이의가 있으면 완료를 누르지 말고 「사후 지원」으로 먼저 알려 주세요.",
+                  )
+                : t(
+                    "等待游客核对并确认这段时间。超时费用由平台向游客收取后与你结算。",
+                    "이용자가 시간을 확인하기를 기다리는 중입니다. 초과 요금은 플랫폼이 이용자에게서 받은 뒤 정산됩니다.",
+                  )
               : t(
                   "超时费用不包含在原订单付款中，平台会另行联系安排补款。",
                   "초과 요금은 원래 결제에 포함되지 않으며, 플랫폼이 별도로 안내합니다.",
@@ -2795,7 +2800,7 @@ function OrderDetail(ctx) {
             <p className="prose">
               {b.note || t("无特别要求", "요청 사항 없음")}
             </p>
-            <ServiceClock b={b} t={t} />
+            <ServiceClock b={b} t={t} isGuest={isGuest} />
             {b.expires &&
               ["requested", "awaiting_payment"].includes(b.status) && (
                 <div className="notice">
