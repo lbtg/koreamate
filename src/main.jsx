@@ -3894,6 +3894,7 @@ function Admin(ctx) {
         "orders",
         "cases",
         "reviews",
+        "pricing",
         "settings",
         "users",
         "audit",
@@ -3911,6 +3912,7 @@ function Admin(ctx) {
     orders: t("订单与财务", "예약 및 재무"),
     cases: t("售后处理", "분쟁 처리"),
     reviews: t("评价审核", "후기 심사"),
+    pricing: t("价格与加成", "요금 및 할증"),
     settings: t("内容与规则", "문구 및 규칙"),
     users: t("人员权限", "담당자 권한"),
     audit: t("操作记录", "작업 기록"),
@@ -3979,6 +3981,8 @@ function Admin(ctx) {
           <AdminCases {...ctx} save={save} busy={busy} />
         ) : tab === "reviews" ? (
           <AdminReviews {...ctx} save={save} busy={busy} />
+        ) : tab === "pricing" ? (
+          <AdminPricing {...ctx} save={save} busy={busy} />
         ) : tab === "settings" ? (
           <AdminSettings {...ctx} save={save} busy={busy} />
         ) : tab === "users" ? (
@@ -4355,6 +4359,177 @@ function AdminReviews({ revision, save, busy }) {
         </div>
       ))}
     </State>
+  );
+}
+// Prices get their own screen rather than a block inside the copy form: a typo in the
+// hero title and a typo in an hourly rate should not save together, and this write is
+// audited on its own.
+function AdminPricing({ session, save, busy, t }) {
+  const cfg = { ...PRICING_DEFAULTS, ...(session.pricing || {}) };
+  const rates = session.levelRates || {};
+  const [holidays, setHolidays] = useState((cfg.holidays || []).join("\n"));
+  const hhmm = (m) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return (
+    <form
+      className="panel"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(e.currentTarget));
+        save("pricing", {
+          levelRates: Object.fromEntries(
+            LEVEL_KEYS.map((k) => [k, f["rate_" + k]]),
+          ),
+          pricing: {
+            onlinePercent: f.onlinePercent,
+            urgentHours: f.urgentHours,
+            urgentPercent: f.urgentPercent,
+            nightFromMinute:
+              Number(String(f.nightFrom).slice(0, 2)) * 60 +
+              Number(String(f.nightFrom).slice(3, 5)),
+            nightPercent: f.nightPercent,
+            weekendPercent: f.weekendPercent,
+            minOnsiteMinutes: f.minOnsiteMinutes,
+            minOnlineMinutes: f.minOnlineMinutes,
+            holidays: holidays
+              .split(/[\s,，]+/)
+              .map((x) => x.trim())
+              .filter(Boolean),
+          },
+        });
+      }}
+    >
+      <h3>
+        {t("各等级标准时薪（人民币 / 小时）", "등급별 표준 시급 (위안/시간)")}
+      </h3>
+      <p className="small muted">
+        {t(
+          "改动会同时应用到目前按该等级标准价计费的译员；在审核表单里被单独定价的译员保持原价。已下单的订单价格不变。",
+          "변경하면 해당 등급의 표준 가격을 적용받는 통역사에게 함께 반영됩니다. 심사 화면에서 따로 가격을 정한 통역사는 그대로 유지되며, 이미 접수된 예약의 금액은 바뀌지 않습니다.",
+        )}
+      </p>
+      <div className="form-grid three">
+        {LEVEL_KEYS.map((k) => (
+          <Field key={k} label={`${k} · ${t(LEVELS[k].zh, LEVELS[k].ko)}`}>
+            <input
+              name={"rate_" + k}
+              type="number"
+              min="10"
+              max="5000"
+              defaultValue={rates[k] ?? LEVELS[k].rate}
+              required
+            />
+          </Field>
+        ))}
+      </div>
+      <h3>{t("服务模式与加成", "서비스 방식과 할증")}</h3>
+      <div className="form-grid three">
+        <Field label={t("线上语音为线下的 %", "온라인 음성 = 오프라인의 %")}>
+          <input
+            name="onlinePercent"
+            type="number"
+            min="10"
+            max="100"
+            defaultValue={cfg.onlinePercent}
+            required
+          />
+        </Field>
+        <Field
+          label={t(
+            "紧急单判定：提前不足 小时",
+            "긴급 기준: 시작까지 시간 미만",
+          )}
+        >
+          <input
+            name="urgentHours"
+            type="number"
+            min="0"
+            max="72"
+            defaultValue={cfg.urgentHours}
+            required
+          />
+        </Field>
+        <Field label={t("紧急加成 %", "긴급 할증 %")}>
+          <input
+            name="urgentPercent"
+            type="number"
+            min="0"
+            max="200"
+            defaultValue={cfg.urgentPercent}
+            required
+          />
+        </Field>
+        <Field label={t("夜间加成起始时刻", "야간 할증 시작 시각")}>
+          <input
+            name="nightFrom"
+            type="time"
+            lang={inputLang()}
+            defaultValue={hhmm(cfg.nightFromMinute)}
+            required
+          />
+        </Field>
+        <Field label={t("夜间加成 %", "야간 할증 %")}>
+          <input
+            name="nightPercent"
+            type="number"
+            min="0"
+            max="200"
+            defaultValue={cfg.nightPercent}
+            required
+          />
+        </Field>
+        <Field label={t("周末 / 节假日加成 %", "주말·공휴일 할증 %")}>
+          <input
+            name="weekendPercent"
+            type="number"
+            min="0"
+            max="200"
+            defaultValue={cfg.weekendPercent}
+            required
+          />
+        </Field>
+        <Field label={t("线下最低计费 分钟", "오프라인 최소 과금 (분)")}>
+          <input
+            name="minOnsiteMinutes"
+            type="number"
+            min="0"
+            max="720"
+            defaultValue={cfg.minOnsiteMinutes}
+            required
+          />
+        </Field>
+        <Field label={t("线上最低计费 分钟", "온라인 최소 과금 (분)")}>
+          <input
+            name="minOnlineMinutes"
+            type="number"
+            min="0"
+            max="720"
+            defaultValue={cfg.minOnlineMinutes}
+            required
+          />
+        </Field>
+      </div>
+      <Field
+        label={t(
+          "法定节假日（每行一个日期，格式 2026-01-01）",
+          "공휴일 (한 줄에 하나, 예: 2026-01-01)",
+        )}
+      >
+        <textarea
+          rows="5"
+          value={holidays}
+          onChange={(e) => setHolidays(e.target.value)}
+          placeholder={"2026-01-01\n2026-02-17"}
+        />
+      </Field>
+      <div className="notice">
+        {t(
+          "场景加成（医疗 30%、医美与商务 20%，高级译员再加 10%–20%，上限 50%）写在代码里，需要调整请提出。所有改动只影响之后的新订单，已下单的价格不会变。",
+          "상황 할증(의료 30%, 미용·비즈니스 20%, 상위 등급 10%–20% 가산, 상한 50%)은 코드에 정의되어 있습니다. 모든 변경은 이후 신규 예약에만 적용됩니다.",
+        )}
+      </div>
+      <Button disabled={busy}>{t("保存价格设置", "요금 설정 저장")}</Button>
+    </form>
   );
 }
 function AdminSettings({ session, save, busy }) {

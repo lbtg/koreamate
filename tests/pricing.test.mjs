@@ -391,3 +391,62 @@ test("a booking inside the lead time is urgent and is surcharged", async () => {
   // 紧急单取消：不退预付款.
   assert.equal(order.cancellation.refundPercent, 0);
 });
+
+test("changing a published level rate moves that level, and spares a hand-priced one", async () => {
+  // A second L3 interpreter, priced deliberately rather than at the published rate.
+  const special = client();
+  await special("/register", "POST", {
+    email: "special@pricing.test",
+    password,
+    name: "单独定价译员",
+    role: "guide",
+  });
+  await special("/guide/profile", "POST", {
+    city: "seoul",
+    purposes: ["business"],
+    bio: "单独定价的商务口译。",
+    languages: "中文 · 한국어",
+    chineseLevel: "native",
+    style: "professional",
+    rate: 400,
+    capacity: 3,
+    image: "",
+    pledge: true,
+  });
+  const sid = (await special("/guide/profile")).id;
+  await admin("/admin/guide", "POST", {
+    id: sid,
+    status: "approved",
+    reason: "资深商务经验，单独定价",
+    level: "L3",
+    rate: 400,
+  });
+  assert.equal((await special("/guide/profile")).rate, 400);
+  // The one approved in the earlier test sits on L3's published rate.
+  assert.equal((await guide("/guide/profile")).rate, LEVELS.L3.rate);
+
+  const next = LEVELS.L3.rate + 25;
+  const res = await admin("/admin/pricing", "POST", {
+    levelRates: { L3: next },
+  });
+  assert.equal(res.levelRates.L3, next);
+  assert.equal(res.repriced, 1);
+  // 「实际价格以平台公示的各等级时薪为准」 — the standard-rate one follows.
+  assert.equal((await guide("/guide/profile")).rate, next);
+  // The deliberately priced one does not.
+  assert.equal((await special("/guide/profile")).rate, 400);
+
+  // An out-of-range figure is refused outright rather than quietly clamped, and
+  // nothing else in the same call is written.
+  await admin(
+    "/admin/pricing",
+    "POST",
+    { pricing: { onlinePercent: 9999 } },
+    400,
+  );
+  const session = await admin("/session");
+  assert.equal(session.pricing.onlinePercent, 50);
+
+  // Put it back so later runs of this file start from the published table.
+  await admin("/admin/pricing", "POST", { levelRates: { L3: LEVELS.L3.rate } });
+});

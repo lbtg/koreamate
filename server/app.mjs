@@ -1588,6 +1588,9 @@ export function createApp({
         return transaction(() => {
           for (let [k, v] of Object.entries(data)) {
             if (!(k in defaults)) continue;
+            // Objects have their own validated endpoint below; this writer would
+            // stringify them into nonsense.
+            if (typeof defaults[k] === "object") continue;
             if (typeof defaults[k] === "number")
               v = integer(
                 v,
@@ -1603,6 +1606,76 @@ export function createApp({
           }
           log(u, "settings.updated", "platform", Object.keys(data).join(","));
           return { ok: true };
+        });
+      }
+      // 平台公示的各等级时薪 and the surcharge percentages. These decide what every
+      // customer is charged, so each field is bounded rather than taken as given, and
+      // the whole change is one audited write.
+      if (path === "/api/admin/pricing" && method === "POST") {
+        role(u, "admin");
+        return transaction(() => {
+          const current = pricingConfig();
+          const rates = { ...current.levelRates };
+          for (const k of LEVEL_KEYS)
+            if (data.levelRates?.[k] !== undefined && data.levelRates[k] !== "")
+              rates[k] = integer(data.levelRates[k], 10, 5000);
+          // Each bound is the range the figure can sensibly take, not a guess: a
+          // percentage of a price, a lead time in hours, a minute of the day.
+          const limits = {
+            onlinePercent: [10, 100],
+            urgentHours: [0, 72],
+            urgentPercent: [0, 200],
+            nightFromMinute: [0, 1439],
+            nightPercent: [0, 200],
+            weekendPercent: [0, 200],
+            minOnsiteMinutes: [0, 720],
+            minOnlineMinutes: [0, 720],
+          };
+          const cfg = { ...current.cfg };
+          for (const [k, [lo, hi]] of Object.entries(limits))
+            if (data.pricing?.[k] !== undefined && data.pricing[k] !== "")
+              cfg[k] = integer(data.pricing[k], lo, hi);
+          if (Array.isArray(data.pricing?.holidays))
+            cfg.holidays = [
+              ...new Set(
+                data.pricing.holidays
+                  .map((d) => clean(d, 10))
+                  .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)),
+              ),
+            ].sort();
+          // 「实际价格以平台公示的各等级时薪为准」, so raising a level's published rate
+          // has to move the interpreters on that level — otherwise the published table
+          // and what customers are charged drift apart. Only those still on the old
+          // standard rate move; an interpreter a reviewer priced deliberately keeps
+          // that price. Placed orders are untouched: they carry their own total.
+          let repriced = 0;
+          for (const k of LEVEL_KEYS) {
+            const before = current.levelRates[k];
+            if (rates[k] === before) continue;
+            repriced += run(
+              "UPDATE guides SET rate=? WHERE level=? AND rate=?",
+              rates[k],
+              k,
+              before,
+            ).changes;
+          }
+          run(
+            "UPDATE settings SET value=? WHERE key=?",
+            JSON.stringify(rates),
+            "levelRates",
+          );
+          run(
+            "UPDATE settings SET value=? WHERE key=?",
+            JSON.stringify(cfg),
+            "pricing",
+          );
+          log(
+            u,
+            "pricing.updated",
+            "platform",
+            `rates ${LEVEL_KEYS.map((k) => `${k}:${rates[k]}`).join(" ")} | online ${cfg.onlinePercent}% urgent ${cfg.urgentPercent}%/${cfg.urgentHours}h night ${cfg.nightPercent}% weekend ${cfg.weekendPercent}% holidays ${cfg.holidays.length} | 按标准价重新定价 ${repriced} 位译员`,
+          );
+          return { ok: true, levelRates: rates, pricing: cfg, repriced };
         });
       }
       if (path === "/api/admin/users" && method === "GET") {
