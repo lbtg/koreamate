@@ -360,12 +360,18 @@ const roles = {
   reviewer: ["审核人员", "심사 담당"],
 };
 // Each map holds a pair; an unknown key still has to read as something.
-// A duration reads as hours when it is whole hours and as minutes when it is not,
-// which is what the two service modes need: 3 小时 for an on-site day, 20 分钟 for a call.
-const duration = (minutes, t) =>
-  minutes % 60 === 0
-    ? `${minutes / 60} ${t("小时", "시간")}`
-    : `${minutes} ${t("分钟", "분")}`;
+// Durations in this product span a ten-minute call and a twelve-hour day, and are
+// read by people checking a bill. 215 minutes is a number to decode; 3 小时 35 分 is
+// not. Under an hour it stays in minutes, where that is how people say it.
+const duration = (minutes, t) => {
+  const m = Math.max(0, Math.round(Number(minutes) || 0));
+  if (m < 60) return `${m} ${t("分钟", "분")}`;
+  const h = Math.floor(m / 60),
+    rest = m % 60;
+  return rest
+    ? `${h} ${t("小时", "시간")} ${rest} ${t("分", "분")}`
+    : `${h} ${t("小时", "시간")}`;
+};
 const pick = (map, key, t) => (map[key] ? t(...map[key]) : key);
 // Components get t() as a prop; module-level helpers read the stored choice instead.
 // The two agree because App writes km-language whenever the reader switches.
@@ -2612,7 +2618,7 @@ function ServiceClock({ b, t, isGuest = true }) {
       </h3>
       {row(
         t("预约时段", "예약 시간"),
-        `${kst(b.start)} — ${hm2(b.end)}（${duration(booked, t)}）`,
+        `${kst(b.start)} — ${hm2(b.end)} · ${duration(booked, t)}`,
       )}
       {row(
         t("实际开始", "실제 시작"),
@@ -2645,8 +2651,8 @@ function ServiceClock({ b, t, isGuest = true }) {
             `${duration(over, t)}${
               b.overtime?.graceMinutes
                 ? t(
-                    `（宽限 ${b.overtime.graceMinutes} 分钟，按 ${duration(b.overtime.billableMinutes, t)} 计费）`,
-                    ` (유예 ${b.overtime.graceMinutes}분, ${duration(b.overtime.billableMinutes, t)} 과금)`,
+                    ` · 宽限 ${b.overtime.graceMinutes} 分钟，按 ${duration(b.overtime.billableMinutes, t)} 计费`,
+                    ` · 유예 ${b.overtime.graceMinutes}분, ${duration(b.overtime.billableMinutes, t)} 과금`,
                   )
                 : ""
             }`,
