@@ -450,3 +450,60 @@ test("changing a published level rate moves that level, and spares a hand-priced
   // Put it back so later runs of this file start from the published table.
   await admin("/admin/pricing", "POST", { levelRates: { L3: LEVELS.L3.rate } });
 });
+
+test("a voice call is not limited to one city", async () => {
+  // 李书妍-style case: an approved interpreter in another city who takes calls.
+  const busan = client();
+  await busan("/register", "POST", {
+    email: "busan@pricing.test",
+    password,
+    name: "釜山译员",
+    role: "guide",
+  });
+  await busan("/guide/profile", "POST", {
+    city: "busan",
+    purposes: ["shopping"],
+    bio: "釜山的购物翻译，也接线上语音。",
+    languages: "中文 · 한국어",
+    chineseLevel: "native",
+    style: "friendly",
+    rate: 150,
+    capacity: 3,
+    image: "",
+    pledge: true,
+    offersOnline: true,
+  });
+  const bid = (await busan("/guide/profile")).id;
+  await admin("/admin/guide", "POST", {
+    id: bid,
+    status: "approved",
+    reason: "已核验",
+    level: "L2",
+  });
+  await busan("/guide/availability", "POST", { date, start: 0, end: 1440 });
+
+  const search = (over) =>
+    "/guides?" +
+    new URLSearchParams({
+      city: "seoul",
+      date,
+      time: "11:00",
+      minutes: 120,
+      adults: 1,
+      children: 0,
+      purposes: "shopping",
+      ...over,
+    });
+  // On site, Seoul means Seoul.
+  const onsite = await guest(search({ mode: "onsite" }));
+  assert.equal(
+    onsite.some((g) => g.id === bid),
+    false,
+  );
+  // On a call, the Busan interpreter is reachable.
+  const online = await guest(search({ mode: "online", minutes: 30 }));
+  assert.equal(
+    online.some((g) => g.id === bid),
+    true,
+  );
+});

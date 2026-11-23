@@ -682,15 +682,20 @@ export function createApp({
           mode,
         ),
         budget = get("budget") ? integer(get("budget"), 1, 100000000) : null;
-      let rows = q(
-        "SELECT * FROM guides WHERE city=? AND status='approved' AND paused=0",
-        city,
+      // A voice call has nobody travelling to you, so the city does not constrain it:
+      // narrowing by city would hide interpreters who could take the call perfectly
+      // well, in the one mode meant for 「不便到场」.
+      let rows = (
+        mode === "online"
+          ? q("SELECT * FROM guides WHERE status='approved' AND paused=0")
+          : q(
+              "SELECT * FROM guides WHERE city=? AND status='approved' AND paused=0",
+              city,
+            )
       )
         .filter(
           (g) =>
             ps.every((p) => jsonList(g.purposes).includes(p)) &&
-            // A voice call has no one travelling to you, so 接待人数 and the city only
-            // constrain an on-site booking.
             (mode === "online" || g.capacity >= adults + children) &&
             (mode !== "online" ||
               g.offers_online === null ||

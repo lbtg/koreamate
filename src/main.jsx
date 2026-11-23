@@ -1054,14 +1054,22 @@ function SearchFields({ search, setSearch, t, labels }) {
         ))}
       </div>
       <div className="search-grid">
-        <Field label={t("服务城市", "도시")}>
-          <Select
-            options={labels(cities)}
-            groups={cityGroups.map(([label, keys]) => [t(...label), keys])}
-            value={search.city}
-            onChange={(v) => change("city", v)}
-          />
-        </Field>
+        {online ? (
+          <Field label={t("服务城市", "도시")}>
+            <div className="field-static">
+              {t("语音通话不限城市", "음성 통화는 도시 제한 없음")}
+            </div>
+          </Field>
+        ) : (
+          <Field label={t("服务城市", "도시")}>
+            <Select
+              options={labels(cities)}
+              groups={cityGroups.map(([label, keys]) => [t(...label), keys])}
+              value={search.city}
+              onChange={(v) => change("city", v)}
+            />
+          </Field>
+        )}
         <Field label={t("服务日期", "날짜")}>
           <input
             type="date"
