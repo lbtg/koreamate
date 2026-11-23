@@ -5,9 +5,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp, purposes } from "../server/app.mjs";
 let app, base, dir, admin, guide, guest, other, reviewer, gid, bid;
-const date = new Date(Date.now() + 5 * 86400000 + 32400000)
-  .toISOString()
-  .slice(0, 10);
+// Weekends and holidays carry a surcharge, so a date that floats with the calendar
+// would change the expected totals depending on the day the suite runs. Walk forward
+// to the next Seoul weekday and stay there.
+const date = (() => {
+  let ms = Date.now() + 5 * 86400000;
+  while ([0, 6].includes(new Date(ms + 32400000).getUTCDay())) ms += 86400000;
+  return new Date(ms + 32400000).toISOString().slice(0, 10);
+})();
 const password = "Integration-test-948!";
 function client() {
   let cookie = "",
@@ -137,6 +142,8 @@ test("guide application approval and complete slot matching across separate acco
     id: gid,
     status: "approved",
     reason: "Identity and language checked",
+    level: "L3",
+    rate: 350,
   });
   await guide("/guide/availability", "POST", { date, start: 540, end: 1080 });
   let found = await guest(search());
@@ -208,6 +215,8 @@ test("payment reconciliation is authorized, idempotent and separate from status;
     id: gid,
     status: "approved",
     reason: "Updated profile checked",
+    level: "L3",
+    rate: 350,
   });
 });
 test("change requires both participants; cannot force state via administrator", async () => {

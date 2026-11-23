@@ -342,7 +342,7 @@ export function createPayments({
             amount: a.total,
             currency: "KRW",
             orderId: a.order_id,
-            orderName: "Kilometer 随行翻译预约",
+            orderName: "KiloMate 随行翻译预约",
             successUrl:
               origin + "/payments/success" + (mobile ? "?client=app" : ""),
             failUrl: origin + "/payments/fail" + (mobile ? "?client=app" : ""),

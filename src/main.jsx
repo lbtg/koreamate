@@ -663,7 +663,7 @@ function App() {
       {adminZone ? (
         <header className="admin-header">
           <button className="brand" onClick={() => navigate("/admin")}>
-            Kilo<span>meter</span> <small>{t("运营管理", "운영 관리")}</small>
+            Kilo<span>Mate</span> <small>{t("运营管理", "운영 관리")}</small>
           </button>
           <div>
             {staff && (
@@ -683,7 +683,7 @@ function App() {
         <header className="header">
           <div className="nav-wrap">
             <button className="brand" onClick={() => navigate("/")}>
-              Kilo<span>meter</span>
+              Kilo<span>Mate</span>
               <span className="brand-dot">✦</span>
             </button>
             <nav className={mobile ? "nav open" : "nav"}>
@@ -893,7 +893,7 @@ function App() {
       <footer>
         <div>
           <b className="brand">
-            Kilo<span>meter</span>
+            Kilo<span>Mate</span>
           </b>
           <p>
             {t("让每一次同行，都有明确的约定。", "함께하는 시간, 분명한 약속.")}
@@ -902,7 +902,7 @@ function App() {
         <div>
           <span>{t("韩国全境 · 85 个城市", "대한민국 전역 · 85개 도시")}</span>
           <small>
-            © {new Date().getFullYear()} Kilometer ·{" "}
+            © {new Date().getFullYear()} KiloMate ·{" "}
             {t("所有服务时间均为韩国时间", "모든 시간은 한국 시간 기준")}
           </small>
           <nav className="legal-nav">
@@ -1156,7 +1156,7 @@ function Home(ctx) {
           {/* The English tagline is the kicker for a Chinese reader and the
               headline for a Korean one, so neither sees it twice. */}
           <span className="eyebrow light">
-            {t("YOUR PERSONAL LANGUAGE BUTLER, ANYWHERE YOU GO.", "KILOMETER")}
+            {t("YOUR PERSONAL LANGUAGE BUTLER, ANYWHERE YOU GO.", "KILOMATE")}
           </span>
           <h1>
             {t(
@@ -1521,7 +1521,7 @@ function Auth({
         data,
       );
       await reloadSession();
-      message(t("欢迎来到 Kilometer", "Kilometer에 오신 것을 환영합니다"));
+      message(t("欢迎来到 KiloMate", "KiloMate에 오신 것을 환영합니다"));
       navigate(safeNext(result.user.role));
     } catch (e) {
       setError(e.message);
@@ -1544,7 +1544,7 @@ function Auth({
       </div>
       <div className="auth-panel">
         <span className="eyebrow">
-          {adminPortal ? "KILOMETER OPERATIONS" : "WELCOME TO KILOMETER"}
+          {adminPortal ? "KILOMATE OPERATIONS" : "WELCOME TO KILOMATE"}
         </span>
         <h2>
           {adminPortal
@@ -3169,7 +3169,7 @@ function Admin(ctx) {
   return (
     <section className="admin-layout">
       <aside className="sidebar">
-        <span className="eyebrow">KILOMETER OPERATIONS</span>
+        <span className="eyebrow">KILOMATE OPERATIONS</span>
         <h2>{t("运营工作台", "운영 콘솔")}</h2>
         <span className="role-label">
           {pick(roles, user.role, t)} · {user.name}

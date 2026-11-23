@@ -142,8 +142,17 @@ async function setup(t) {
     id: g.id,
     status: "approved",
     reason: "verified",
+    // Approving now assigns a level; the reviewed rate is what gets charged.
+    level: "L3",
+    rate: 350,
   });
-  const date = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+  // Weekends carry a surcharge, so a floating date would change the expected total
+  // depending on the day the suite runs. Walk forward to the next Seoul weekday.
+  const date = (() => {
+    let ms = Date.now() + 5 * 86400000;
+    while ([0, 6].includes(new Date(ms + 32400000).getUTCDay())) ms += 86400000;
+    return new Date(ms + 32400000).toISOString().slice(0, 10);
+  })();
   await guide("/guide/availability", "POST", { date, start: 0, end: 1440 });
   const request = {
     guideId: g.id,

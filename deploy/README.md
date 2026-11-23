@@ -23,15 +23,15 @@
 `deploy/update.sh` 把这件事收成一条命令，并且在出问题时停下来而不是猜。
 
 ```sh
-sudo install -m 755 deploy/update.sh /usr/local/bin/kilometer-update   # 装一次
-kilometer-update                                                       # 以后每次
+sudo install -m 755 deploy/update.sh /usr/local/bin/kilomate-update   # 装一次
+kilomate-update                                                       # 以后每次
 ```
 
 它会依次：拉取 `origin/main`、列出本次更新的提交、重建并启动容器、
 然后轮询 `127.0.0.1:3001/api/health` 直到后端应答。
 服务器上存在未提交改动、构建失败、或 60 秒内后端没有应答，都会报错退出并打印日志；
 数据库在命名卷里，整个过程不碰它。
-可用 `KILOMETER_REPO` 指定代码目录（默认 `~/koreamate`）。
+可用 `KILOMATE_REPO` 指定代码目录（默认 `~/koreamate`）。
 
 ## 数据库备份
 

@@ -2,16 +2,17 @@
 # Pull the latest main and restart the backend, in one word.
 #
 # Install on the server:
-#   sudo install -m 755 deploy/update.sh /usr/local/bin/kilometer-update
+#   sudo install -m 755 deploy/update.sh /usr/local/bin/kilomate-update
 # Then every future update is:
-#   kilometer-update
+#   kilomate-update
+# An older install under the kilometer-update name keeps working unchanged.
 #
 # It stops rather than guesses: uncommitted edits on the server, a failed build or a
 # backend that does not answer afterwards all leave a message instead of a half-done
 # deploy. The database lives in a named volume and is never touched here.
 set -euo pipefail
 
-REPO="${KILOMETER_REPO:-$HOME/koreamate}"
+REPO="${KILOMATE_REPO:-${KILOMETER_REPO:-$HOME/koreamate}}"
 COMPOSE="deploy/compose.yaml"
 
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }

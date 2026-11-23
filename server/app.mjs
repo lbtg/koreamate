@@ -13,6 +13,16 @@ import {
 import { mkdirSync, existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  LEVELS,
+  LEVEL_KEYS,
+  MODE_KEYS,
+  PRICING_DEFAULTS,
+  SCENE_LOAD,
+  cancellationTerms,
+  minimumMinutes,
+  quote,
+} from "../src/pricing.js";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const purposes = [
   "shopping",
@@ -171,6 +181,24 @@ export function createApp({
   const q = (sql, ...args) => db.prepare(sql).all(...args),
     one = (sql, ...args) => db.prepare(sql).get(...args),
     run = (sql, ...args) => db.prepare(sql).run(...args);
+  // Columns added after the first release. CREATE TABLE above only runs on a new
+  // database, so an existing server needs each one added by hand, once.
+  const addColumn = (table, column, decl) => {
+    if (!q(`PRAGMA table_info(${table})`).some((c) => c.name === column))
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
+  };
+  addColumn("guides", "level", "TEXT DEFAULT ''");
+  addColumn("guides", "offers_online", "INTEGER DEFAULT 1");
+  addColumn("guides", "asking_rate", "INTEGER DEFAULT 0");
+  // Before levels existed the interpreter's own figure was the charged price. It
+  // becomes their asking price; the charged one is set by a reviewer from here on.
+  run("UPDATE guides SET asking_rate=rate WHERE asking_rate IS NULL OR asking_rate=0");
+  addColumn("bookings", "mode", "TEXT DEFAULT 'onsite'");
+  addColumn("bookings", "minutes", "INTEGER DEFAULT 0");
+  addColumn("bookings", "breakdown", "TEXT DEFAULT ''");
+  addColumn("bookings", "urgent", "INTEGER DEFAULT 0");
+  // Orders written before the booking carried its own duration.
+  run("UPDATE bookings SET minutes=(end-start)/60000 WHERE minutes IS NULL OR minutes=0");
   const defaults = {
     commission: 20,
     responseHours: 24,
@@ -184,6 +212,12 @@ export function createApp({
       "预约需由随行翻译确认后付款。服务内容、集合地点及额外支出请在订单消息中确认。取消或退款申请由平台按订单约定处理。",
     faq: "所有预约时间均为韩国时间。平台审核通过的随行翻译才能接受预约。医疗类别仅用于匹配已核准的翻译服务范围，不提供诊断或治疗。",
     paymentInstructions: "",
+    // 《客户预订与服务方案》. Seeded from the document's own figures and editable in the
+    // admin settings page, because the document says the published rates govern.
+    levelRates: Object.fromEntries(
+      LEVEL_KEYS.map((k) => [k, LEVELS[k].rate]),
+    ),
+    pricing: { ...PRICING_DEFAULTS },
   };
   for (const [k, v] of Object.entries(defaults))
     run("INSERT OR IGNORE INTO settings VALUES(?,?)", k, JSON.stringify(v));
@@ -233,6 +267,33 @@ export function createApp({
     Object.fromEntries(
       q("SELECT * FROM settings").map((x) => [x.key, JSON.parse(x.value)]),
     );
+  // Pricing configuration, with every key 《客户预订与服务方案》 defines guaranteed
+  // present even when an older settings row predates it.
+  const pricingConfig = () => {
+    const st = settings();
+    return {
+      cfg: { ...PRICING_DEFAULTS, ...(st.pricing || {}) },
+      levelRates: {
+        ...Object.fromEntries(LEVEL_KEYS.map((k) => [k, LEVELS[k].rate])),
+        ...(st.levelRates || {}),
+      },
+    };
+  };
+  // Every price in the system comes through here, so the customer's quote, the order
+  // total and the refund all read the same rules from the same place.
+  const priceFor = (g, { mode, startMs, minutes, purposes, nowMs = now() }) => {
+    const { cfg } = pricingConfig();
+    return quote({
+      rate: g.rate,
+      level: g.level || "",
+      mode,
+      startMs,
+      minutes,
+      purposes,
+      nowMs,
+      settings: cfg,
+    });
+  };
   const log = (u, action, target, detail = "") =>
     run(
       "INSERT INTO audit VALUES(?,?,?,?,?,?)",
@@ -286,7 +347,7 @@ export function createApp({
     }
     run("DELETE FROM sessions WHERE expires<?", now());
   };
-  const timeInput = (date, time, hours) => {
+  const timeInput = (date, time, minutes, mode = "onsite") => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time))
       fail("请选择日期和开始时间");
     const start = Date.parse(`${date}T${time}:00+09:00`);
@@ -296,15 +357,18 @@ export function createApp({
         `${date}T${time}`
     )
       fail("日期或时间无效");
-    const duration = integer(hours, 1, 12);
+    const duration = integer(minutes, 10, 720);
     if (start < now() + 300000) fail("请预约至少5分钟后的时间");
-    let end = start + duration * 3600000;
+    let end = start + duration * 60000;
+    // An interpreter travelling to you cannot be booked across midnight; a voice call
+    // of a few minutes late at night is ordinary, so that rule is for on-site only.
     if (
+      mode !== "online" &&
       new Date(start + 32400000).toISOString().slice(0, 10) !==
-      new Date(end - 1 + 32400000).toISOString().slice(0, 10)
+        new Date(end - 1 + 32400000).toISOString().slice(0, 10)
     )
       fail("单次服务不能跨越午夜");
-    return { start, end };
+    return { start, end, minutes: duration };
   };
   const fits = (g, start, end, exclude = null) => {
     const local = new Date(start + 32400000),
@@ -347,12 +411,26 @@ export function createApp({
       languages: g.languages,
       chineseLevel: g.chinese_level,
       style: g.style,
+      // The charged hourly rate. Only a reviewer ever writes it, and approving sets it
+      // from the assigned level unless the reviewer overrides — 「实际价格以平台公示的
+      // 各等级时薪为准」. The interpreter's own figure stays beside it as a request.
       rate: g.rate,
+      askingRate: g.asking_rate ?? g.rate,
+      level: g.level || "",
+      levelName: LEVELS[g.level]?.zh || "",
+      levelNameKo: LEVELS[g.level]?.ko || "",
+      offersOnline: g.offers_online === null ? true : !!g.offers_online,
       capacity: g.capacity,
       image: g.image,
       isDemo: !!g.is_demo,
       rating: r.rating,
       reviewCount: r.count,
+      // 服务次数 on the directory card: orders actually carried out, not orders placed.
+      serviceCount:
+        one(
+          "SELECT COUNT(*) n FROM bookings WHERE guide_id=? AND status='completed'",
+          g.id,
+        )?.n || 0,
     };
   };
   const auth = (req) => {
@@ -414,6 +492,21 @@ export function createApp({
     onlinePayment: payments.summary(b.id),
     ...b,
     purposes: jsonList(b.purposes),
+    urgent: !!b.urgent,
+    // The breakdown as agreed at booking time, and what cancelling right now would
+    // return — both sides of an order should be reading the same numbers.
+    breakdown: (() => {
+      try {
+        return b.breakdown ? JSON.parse(b.breakdown) : null;
+      } catch {
+        return null;
+      }
+    })(),
+    cancellation: cancellationTerms({
+      startMs: b.start,
+      nowMs: now(),
+      urgent: !!b.urgent,
+    }),
     guideName: one(
       "SELECT u.name FROM users u JOIN guides g ON u.id=g.user_id WHERE g.id=?",
       b.guide_id,
@@ -514,6 +607,10 @@ export function createApp({
         manualPayments,
         payments: payments.config,
         settings: settings(),
+        // The browser quotes with exactly the rules the server will check against.
+        pricing: pricingConfig().cfg,
+        levelRates: pricingConfig().levelRates,
+        sceneLoad: SCENE_LOAD,
       };
     if (path === "/api/register" && method === "POST") {
       if (!["guest", "guide"].includes(data.role)) fail("请选择账户类型");
@@ -573,12 +670,14 @@ export function createApp({
         ps = (get("purposes") || "shopping").split(",");
       if (!cities.includes(city) || ps.some((p) => !purposes.includes(p)))
         fail("筛选条件无效");
+      const mode = MODE_KEYS.includes(get("mode")) ? get("mode") : "onsite";
       const adults = integer(get("adults") || 1, 1, 12),
         children = integer(get("children") || 0, 0, 12),
-        { start, end } = timeInput(
+        { start, end, minutes } = timeInput(
           get("date") || "",
           get("time") || "",
-          get("hours") || 3,
+          get("minutes") || (get("hours") || 3) * 60,
+          mode,
         ),
         budget = get("budget") ? integer(get("budget"), 1, 100000000) : null;
       let rows = q(
@@ -588,16 +687,26 @@ export function createApp({
         .filter(
           (g) =>
             ps.every((p) => jsonList(g.purposes).includes(p)) &&
-            g.capacity >= adults + children &&
+            // A voice call has no one travelling to you, so 接待人数 and the city only
+            // constrain an on-site booking.
+            (mode === "online" || g.capacity >= adults + children) &&
+            (mode !== "online" || g.offers_online === null || g.offers_online) &&
             (!get("chinese") || g.chinese_level === get("chinese")) &&
             (!get("style") || g.style === get("style")) &&
-            (!budget || (g.rate * (end - start)) / 3600000 <= budget) &&
             fits(g, start, end),
         )
-        .map((g) => ({
-          ...publicGuide(g),
-          total: (g.rate * (end - start)) / 3600000,
-        }));
+        .map((g) => {
+          const price = priceFor(g, {
+            mode,
+            startMs: start,
+            minutes,
+            purposes: ps,
+          });
+          return { ...publicGuide(g), total: price.total, price };
+        })
+        // Budget is checked against the quoted total, surcharges included, so a result
+        // never costs more at checkout than the filter promised.
+        .filter((g) => !budget || g.total <= budget);
       rows.sort((a, b) =>
         get("sort") === "price"
           ? a.total - b.total
@@ -611,6 +720,39 @@ export function createApp({
         now(),
       );
       return rows;
+    }
+    // 译员列表. The search above answers "who is free at this hour"; this answers
+    // "who is on the platform at all", which is what someone landing on the site wants
+    // before they have a date in mind. Same approval gate, no time filter.
+    if (path === "/api/interpreters" && method === "GET") {
+      const city = get("city") || "";
+      const ps = (get("purposes") || "").split(",").filter(Boolean);
+      if (city && !cities.includes(city)) fail("城市无效");
+      if (ps.some((x) => !purposes.includes(x))) fail("服务类别无效");
+      const level = LEVEL_KEYS.includes(get("level")) ? get("level") : "";
+      const rows = q(
+        "SELECT * FROM guides WHERE status='approved' AND paused=0 AND is_demo=0",
+      )
+        .filter(
+          (g) =>
+            (!city || g.city === city) &&
+            (!level || g.level === level) &&
+            ps.every((x) => jsonList(g.purposes).includes(x)) &&
+            (get("mode") !== "online" ||
+              g.offers_online === null ||
+              g.offers_online),
+        )
+        .map(publicGuide);
+      const sort = get("sort");
+      rows.sort((a, b) =>
+        sort === "price"
+          ? a.rate - b.rate
+          : sort === "services"
+            ? b.serviceCount - a.serviceCount
+            : (b.rating || 0) - (a.rating || 0) ||
+              b.serviceCount - a.serviceCount,
+      );
+      return { total: rows.length, interpreters: rows };
     }
     const gm = path.match(/^\/api\/guides\/([^/]+)$/);
     if (gm && method === "GET") {
@@ -664,7 +806,9 @@ export function createApp({
           fail("请先确认《随行翻译服务守则》后再提交资料");
         const gid = g?.id || id();
         run(
-          `INSERT INTO guides(id,user_id,city,purposes,bio,languages,chinese_level,style,rate,capacity,image,status,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',?) ON CONFLICT(user_id) DO UPDATE SET city=excluded.city,purposes=excluded.purposes,bio=excluded.bio,languages=excluded.languages,chinese_level=excluded.chinese_level,style=excluded.style,rate=excluded.rate,capacity=excluded.capacity,image=excluded.image,status='pending',review_note=''`,
+          // asking_rate is what the interpreter wants; rate is what a reviewer sets.
+          // Submitting never touches rate, so no price reaches a customer unreviewed.
+          `INSERT INTO guides(id,user_id,city,purposes,bio,languages,chinese_level,style,asking_rate,rate,capacity,image,offers_online,status,created) VALUES(?,?,?,?,?,?,?,?,?,0,?,?,?,'pending',?) ON CONFLICT(user_id) DO UPDATE SET city=excluded.city,purposes=excluded.purposes,bio=excluded.bio,languages=excluded.languages,chinese_level=excluded.chinese_level,style=excluded.style,asking_rate=excluded.asking_rate,capacity=excluded.capacity,image=excluded.image,offers_online=excluded.offers_online,status='pending',review_note=''`,
           gid,
           u.id,
           data.city,
@@ -676,6 +820,7 @@ export function createApp({
           integer(data.rate, 50, 5000),
           integer(data.capacity, 1, 12),
           image,
+          data.offersOnline === false ? 0 : 1,
           now(),
         );
         admins("有随行翻译资料等待审核");
@@ -745,10 +890,19 @@ export function createApp({
         );
         if (!g) fail("随行翻译暂不可预约");
         if (g.is_demo) fail("演示资料不接受真实预约");
-        const { start, end } = timeInput(data.date, data.time, data.hours),
+        const mode = MODE_KEYS.includes(data.mode) ? data.mode : "onsite";
+        if (mode === "online" && g.offers_online === 0)
+          fail("该译员暂不提供线上语音服务");
+        const { start, end, minutes } = timeInput(
+            data.date,
+            data.time,
+            data.minutes ?? (data.hours || 0) * 60,
+            mode,
+          ),
           adults = integer(data.adults, 1, 12),
           children = integer(data.children || 0, 0, 12);
-        if (adults + children > g.capacity) fail("超过接待人数");
+        if (mode !== "online" && adults + children > g.capacity)
+          fail("超过接待人数");
         if (
           !Array.isArray(data.purposes) ||
           !data.purposes.length ||
@@ -765,7 +919,13 @@ export function createApp({
           )
         )
           fail("已经提交过该预约", 409);
-        const total = (g.rate * (end - start)) / 3600000;
+        const price = priceFor(g, {
+          mode,
+          startMs: start,
+          minutes,
+          purposes: data.purposes,
+        });
+        const total = price.total;
         if (
           data.expectedTotal !== undefined &&
           Number(data.expectedTotal) !== total
@@ -774,7 +934,7 @@ export function createApp({
         const bid = id(),
           commission = Math.round((total * settings().commission) / 100);
         run(
-          `INSERT INTO bookings(id,guest_id,guide_id,start,end,adults,children,purposes,city,note,status,total,commission,expires,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?,'requested',?,?,?,?,?)`,
+          `INSERT INTO bookings(id,guest_id,guide_id,start,end,adults,children,purposes,city,note,status,total,commission,expires,created,updated,mode,minutes,breakdown,urgent) VALUES(?,?,?,?,?,?,?,?,?,?,'requested',?,?,?,?,?,?,?,?,?)`,
           bid,
           u.id,
           g.id,
@@ -790,6 +950,12 @@ export function createApp({
           Math.min(now() + settings().responseHours * 3600000, start),
           now(),
           now(),
+          mode,
+          minutes,
+          // Frozen at booking time: the rules may be retuned later, and the customer is
+          // owed the breakdown they agreed to, not a recomputed one.
+          JSON.stringify(price),
+          price.urgent ? 1 : 0,
         );
         notify(g.user_id, "收到新的预约申请", bid);
         log(u, "booking.request", bid);
@@ -929,19 +1095,32 @@ export function createApp({
         const reason = clean(data.reason);
         if (!reason) fail("请说明取消原因");
         if (["paid", "partially_refunded"].includes(b.payment_status)) {
+          // 《客户预订与服务方案》六、取消与改期规则. The money is not moved here — a
+          // human still approves every refund — but the policy figure is written into
+          // the case and told to both sides, so nobody has to work it out by hand and
+          // the customer knows the number before the platform acts on it.
+          const terms = cancellationTerms({
+            startMs: b.start,
+            nowMs: now(),
+            urgent: !!b.urgent,
+          });
+          const due = Math.round((b.total * terms.refundPercent) / 100);
+          const policy = terms.urgent
+            ? `紧急单取消：按规则不退预付款（可改期一次）。订单金额 ¥${b.total}。`
+            : `距服务开始 ${terms.hoursAhead.toFixed(1)} 小时，按规则应退 ${terms.refundPercent}%，即 ¥${due}（扣除 ${terms.feePercent}% 调度费）。`;
           run(
             "INSERT INTO cases VALUES(?,?,?,?,?,?,'open','',?)",
             id(),
             b.id,
             u.id,
             "cancellation",
-            reason,
+            `${reason}\n\n【按取消规则】${policy}`,
             "",
             now(),
           );
           admins("有已付款订单申请取消", b.id);
-          participants(b, "取消申请已提交，等待平台处理；尚未退款");
-          log(u, "booking.cancel_requested", b.id, reason);
+          participants(b, `取消申请已提交，等待平台处理；尚未退款。${policy}`);
+          log(u, "booking.cancel_requested", b.id, `${reason} | ${policy}`);
         } else {
           run(
             "UPDATE bookings SET status='cancelled',updated=? WHERE id=?",
@@ -1181,10 +1360,12 @@ export function createApp({
           )
         )
           fail("已有改期申请待处理");
+        // A reschedule keeps the booked duration and mode; only the clock moves.
         const { start, end } = timeInput(
           data.date,
           data.time,
-          (b.end - b.start) / 3600000,
+          (b.end - b.start) / 60000,
+          b.mode || "onsite",
         );
         if (!clean(data.reason)) fail("请填写改期原因");
         run(
@@ -1289,13 +1470,38 @@ export function createApp({
           fail("状态无效");
         const reason = clean(data.reason);
         if (!reason) fail("请填写审核意见");
+        // The level sets the hourly rate the customer is charged, so an approval
+        // without one would put an interpreter on sale at an unreviewed price.
+        const level = LEVEL_KEYS.includes(data.level) ? data.level : g.level || "";
+        if (data.status === "approved" && !level)
+          fail("请先为该译员评定等级（L1–L5）后再通过审核");
+        const offersOnline =
+          data.offersOnline === undefined
+            ? g.offers_online
+            : data.offersOnline
+              ? 1
+              : 0;
+        // The level's published rate, unless the reviewer deliberately prices this
+        // interpreter differently.
+        const rate =
+          data.rate === undefined || data.rate === null || data.rate === ""
+            ? level
+              ? pricingConfig().levelRates[level]
+              : g.rate
+            : integer(data.rate, 50, 5000);
         run(
-          "UPDATE guides SET status=?,review_note=? WHERE id=?",
+          "UPDATE guides SET status=?,review_note=?,level=?,offers_online=?,rate=? WHERE id=?",
           data.status,
           reason,
+          level,
+          offersOnline,
+          rate,
           g.id,
         );
-        notify(g.user_id, `资料审核状态：${data.status}。${reason}`);
+        notify(
+          g.user_id,
+          `资料审核状态：${data.status}。${level ? `等级：${level} ${LEVELS[level]?.zh || ""}，时薪 ¥${rate}/小时。` : ""}${reason}`,
+        );
         log(u, "guide.review", g.id, `${data.status}: ${reason}`);
         return { ok: true };
       }
@@ -1557,6 +1763,6 @@ if (
   app.server.listen(
     Number(process.env.PORT) || 3001,
     process.env.HOST || "127.0.0.1",
-    () => console.log("Kilometer server listening"),
+    () => console.log("KiloMate server listening"),
   );
 }

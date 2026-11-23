@@ -77,6 +77,9 @@ async function setup(t) {
     id: g.id,
     status: "approved",
     reason: "Approved",
+    // Approving now assigns a level; the reviewed rate is what gets charged.
+    level: "L3",
+    rate: 350,
   });
   const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   await guide("/guide/availability", "POST", { date, start: 0, end: 1440 });
