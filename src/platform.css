@@ -2941,3 +2941,20 @@ footer {
   margin: 10px 0 2px;
   font-size: 13.5px;
 }
+
+.pledge-more {
+  margin: 12px 0 4px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.pledge-more a,
+.workspace-rules a {
+  color: var(--orange);
+  font-weight: 600;
+}
+.workspace-rules {
+  margin: -6px 0 18px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
