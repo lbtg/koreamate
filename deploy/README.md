@@ -29,10 +29,23 @@
 `.cn` 系列域名要先通过实名认证才会解析；服务器在中国大陆的，还需要 ICP 备案，
 而备案要大陆公司主体。服务器在香港或境外的不在备案范围内。
 
+## 两种部署形态
+
+同一份代码支持两种形态，区别只在前端由谁发：
+
+**单机（现在用的）** —— 网页和接口都由这台服务器发。容器里已经打包好前端，
+`server/app.mjs` 同时提供网页和 `/api`。反向代理把主域名转发到 `127.0.0.1:3001` 即可。
+这种形态下 **`BACKEND_GATEWAY_TOKEN` 必须留空或注释掉**：它的作用是「只有网关能调用后端」，
+而现在浏览器就是直接调用方，设了它会让每个接口请求都收到 403「接口不可直接访问」。
+
+**前后端分离** —— 前端托管在 Vercel，接口经 `api/gateway.mjs` 转发到本服务器的
+`api.` 子域名。这时才需要两边设置相同的 `BACKEND_GATEWAY_TOKEN`，用来挡住对后端的直接访问。
+注意 Vercel 在中国大陆没有节点，面向大陆用户时不宜采用这种形态。
+
 ## 持久服务器
 
 1. 拉取 `lbtg/koreamate` 的 `rebuild/full-platform` 分支，复制 `.env.example` 为 `.env`，填入实际配置。
-2. `APP_ORIGIN` 填实际对外前端域名；`NODE_ENV=production`；配置随机 `BACKEND_GATEWAY_TOKEN`。`TOSS_SECRET_KEY` 先使用商户自己的测试密钥，`PAYMENTS_ENABLED=true`。
+2. `APP_ORIGIN` 填用户实际访问的网址；`NODE_ENV=production`。`BACKEND_GATEWAY_TOKEN` 只在前后端分离形态下设置，单机形态留空。`TOSS_SECRET_KEY` 先使用商户自己的测试密钥，`PAYMENTS_ENABLED=true`。
 3. 在仓库根目录运行 `docker compose -f deploy/compose.yaml up -d --build`。命名卷 `platform-data` 保留账户、会话、订单及支付流水；不要使用 `down -v` 清除该卷。
 4. 用服务器现有 HTTPS 反向代理把后端域名转发到 `127.0.0.1:3001`。不要把未加密的 3001 端口直接暴露公网。访问 `/api/health` 应返回 `{"ok":true}`。
 5. 进入服务器终端，安全地临时设置 `ADMIN_EMAIL`、`ADMIN_PASSWORD`、`ADMIN_NAME`，使用相同数据库执行 `node server/app.mjs --create-admin`；Docker 可使用 `docker compose exec -e ... platform ...` 传入本机已有环境变量。创建后移除临时管理员密码变量。
