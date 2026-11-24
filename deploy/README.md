@@ -8,6 +8,27 @@
 
 现有 Vercel 项目继续承载前端和同源 API 转发。SQLite 文件必须留在持久服务器，不能写到 Vercel 函数临时目录。只允许一个后端实例。微信、支付宝等其他通道未启用；不要把卡支付接入理解为中国支付通道也已开通。
 
+## 换域名
+
+域名只写在两处：代码里的 `vite.config.js → PUBLIC_ORIGIN`（它同时生成 `canonical`、
+`og:` 标签、`robots.txt` 和 `sitemap.xml`），以及服务器上的 `APP_ORIGIN`。
+
+当前域名：`kilomate.com.cn`
+
+换成别的域名时，按这个顺序，旧域名留到最后：
+
+1. 新域名解析到服务器 IP（A 记录），等解析生效。
+2. 反向代理为新域名签发 HTTPS 证书，确认 `https://新域名/api/health` 返回 `{"ok":true}`。
+3. 改 `vite.config.js` 的 `PUBLIC_ORIGIN`，提交推送。
+4. 服务器上改 `.env` 的 `APP_ORIGIN=https://新域名`，然后 `kilomate-update`。
+   `APP_ORIGIN` 决定支付成功/失败的回跳地址，配错会让客户付完款回不来。
+5. 如果启用了在线支付：到 Toss 商户后台把 Webhook 改成
+   `https://新域名/api/payments/toss/webhook`。
+6. 新域名全流程走通后，再把旧域名设 301 跳转，最后才停掉旧域名的续费。
+
+`.cn` 系列域名要先通过实名认证才会解析；服务器在中国大陆的，还需要 ICP 备案，
+而备案要大陆公司主体。服务器在香港或境外的不在备案范围内。
+
 ## 持久服务器
 
 1. 拉取 `lbtg/koreamate` 的 `rebuild/full-platform` 分支，复制 `.env.example` 为 `.env`，填入实际配置。

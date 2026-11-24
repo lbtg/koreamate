@@ -363,7 +363,7 @@ test("the server charges the document's rules, not the client's number", async (
   assert.equal(callOrder.total, Math.round((L3 * 10 * 50) / 6000));
 });
 
-test("a booking inside the lead time is urgent and is surcharged", async () => {
+test("a booking inside the lead time is urgent and is surcharged", async (t) => {
   // Two hours from now is inside 「预约时间须至少提前3小时」.
   const soon = new Date(Date.now() + 2 * 3600000 + 32400000);
   const soonDate = soon.toISOString().slice(0, 10);
@@ -374,11 +374,18 @@ test("a booking inside the lead time is urgent and is surcharged", async () => {
     end: 1440,
   });
 
+  // No booking may run past midnight, so fit it into what is left of the Seoul day.
+  const leftInDay = 1440 - (soon.getUTCHours() * 60 + soon.getUTCMinutes());
+  if (leftInDay < 10) {
+    t.skip(`不到午夜 ${leftInDay} 分钟，放不下一单服务；换个时间再跑`);
+    return;
+  }
   const r = await guest("/bookings", "POST", {
     guideId: gid,
     date: soonDate,
     time: soonTime,
-    minutes: 120,
+    mode: "online",
+    minutes: Math.min(30, leftInDay),
     adults: 1,
     children: 0,
     purposes: ["shopping"],
@@ -390,6 +397,19 @@ test("a booking inside the lead time is urgent and is surcharged", async () => {
   );
   // 紧急单取消：不退预付款.
   assert.equal(order.cancellation.refundPercent, 0);
+
+  // The same lead-time rule on an on-site booking, through the pure function, where
+  // the midnight restriction does not apply.
+  const start = Date.now() + 2 * 3600000;
+  const onsite = quote({
+    rate: 100,
+    minutes: 120,
+    purposes: [],
+    startMs: start,
+    nowMs: Date.now(),
+  });
+  assert.equal(onsite.urgent, true);
+  assert.ok(onsite.lines.some((l) => l.key === "urgent" && l.percent === 20));
 });
 
 test("changing a published level rate moves that level, and spares a hand-priced one", async () => {
@@ -508,20 +528,29 @@ test("a voice call is not limited to one city", async () => {
   );
 });
 
-test("overtime is measured, graced, priced and kept apart from the paid total", async () => {
+test("overtime is measured, graced, priced and kept apart from the paid total", async (t) => {
   const { overtimeQuote, PRICING_DEFAULTS } = await import("../src/pricing.js");
   const grace = PRICING_DEFAULTS.overtimeGraceMinutes;
 
-  // A booking that starts in a moment, so the service can actually be started.
-  const soon = new Date(Date.now() + 10 * 60000 + 32400000);
+  // 开始 is only allowed within fifteen minutes of the booked time, so this booking
+  // has to start almost now — and no booking may run past midnight. Fit the duration
+  // into whatever is left of the Seoul day, and say so rather than fail if the suite
+  // happens to run in the last few minutes before midnight.
+  const soon = new Date(Date.now() + 6 * 60000 + 32400000);
   const d = soon.toISOString().slice(0, 10);
   const hhmm = soon.toISOString().slice(11, 16);
+  const leftInDay = 1440 - (soon.getUTCHours() * 60 + soon.getUTCMinutes());
+  if (leftInDay < 10) {
+    t.skip(`不到午夜 ${leftInDay} 分钟，放不下一单服务；换个时间再跑`);
+    return;
+  }
   await guide("/guide/availability", "POST", { date: d, start: 0, end: 1440 });
-  const booked = 120;
+  const booked = Math.min(120, leftInDay);
   const r = await guest("/bookings", "POST", {
     guideId: gid,
     date: d,
     time: hhmm,
+    mode: "online",
     minutes: booked,
     adults: 1,
     children: 0,

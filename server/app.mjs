@@ -381,12 +381,15 @@ export function createApp({
     const duration = integer(minutes, 10, 720);
     if (start < now() + 300000) fail("请预约至少5分钟后的时间");
     let end = start + duration * 60000;
-    // An interpreter travelling to you cannot be booked across midnight; a voice call
-    // of a few minutes late at night is ordinary, so that rule is for on-site only.
+    // No service may be booked across midnight, in either mode. The exemption that
+    // used to sit here for voice calls was a trap: the availability check reads the
+    // open hours of the start date only, so a call running past midnight was refused
+    // anyway — with "该时段不可预约" rather than the real reason. Supporting it properly
+    // means teaching that check to span two days, which is a change to booking
+    // conflict logic and wants doing on its own.
     if (
-      mode !== "online" &&
       new Date(start + 32400000).toISOString().slice(0, 10) !==
-        new Date(end - 1 + 32400000).toISOString().slice(0, 10)
+      new Date(end - 1 + 32400000).toISOString().slice(0, 10)
     )
       fail("单次服务不能跨越午夜");
     return { start, end, minutes: duration };

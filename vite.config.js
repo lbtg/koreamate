@@ -7,7 +7,7 @@ import react from "@vitejs/plugin-react";
 //
 // To move to a new domain, change this one line (or set PUBLIC_ORIGIN when building).
 // No trailing slash.
-const PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN || "https://hikoreamate.com";
+const PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN || "https://kilomate.com.cn";
 
 // Pages a search engine should index. Everything behind a login is excluded here and
 // again in robots.txt below.
